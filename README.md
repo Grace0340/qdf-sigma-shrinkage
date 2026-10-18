@@ -1,14 +1,13 @@
-# Code and logs for "What Does a Meta-Learned Horizon Weighting Learn? A Shrinkage View of Quadratic Direct Forecasting"
+# Code, logs and extended results for "What Does a Meta-Learned Horizon Weighting Learn? A Shrinkage View of Quadratic Direct Forecasting"
 
-Code, run records and frozen protocols of the letter, submitted to
+Code, run records, frozen protocols and extended results of the letter, submitted to
 IEEE Signal Processing Letters by Yao Guo and Penggui Peng.
-
-The extended results cited in the letter as Tables E1–E12 are not part of this repository; most of their table rows are among the files in `paper/generated/`.
 
 ## What is here
 
 | Path | Content |
 |---|---|
+| `extended_results.pdf` | Extended derivations, numerical checks and every table cited in the letter as Table E1–E12. |
 | `experiments/q1a_qdf_attribution/protocol*.json` | Frozen protocols, byte-identical to the versions frozen before each protocol's runs. Their SHA-256 prefixes are listed on the Information for Reproducibility page. |
 | `experiments/q1a_qdf_attribution/run_grid*.py` | Runner of each protocol. |
 | `experiments/q1a_qdf_attribution/summarize*.py` | Frozen decision rules of each protocol. They read only the run records and write `results/summary*.json`. |
