@@ -1,0 +1,49 @@
+{
+  "protocol_id": "Q1A_V4_LABEL_COV_LW_SPECTRUM",
+  "status": "post hoc: designed after Q1A_V3 (+AMEND1) gave META_LEARNING_UNNECESSARY and after the S1 collision table flagged Time-o1 (closed-form label PCA in the loss) as the closest prior work; frozen 2026-10-11 before any v4 formal run (only 1-epoch smoke tests in smoke_v4*/, excluded)",
+  "frozen_at": "2026-10-11",
+  "questions": {
+    "Q4.1": "Is the residual second moment S0 of the untrained model what matters, or does the label covariance Cov(Y_train) (Time-o1's ingredient) give the same gain? If so the 'residual' narrative collapses to a sign-flipped Time-o1.",
+    "Q4.2": "Is the gain due to the eigen-directions of I + a*S0n, or only to its spectrum (conditioning / effective step size)? Control: same eigenvalues, Haar-random eigenvectors.",
+    "Q4.3": "Does a standard automatic shrinkage rule (Ledoit-Wolf, no validation search) choose a useful shrinkage?"
+  },
+  "platform": "AutoDL (Chongqing A / machine 703), 16 vCPU quota, CPU only (CUDA_VISIBLE_DEVICES empty), 14 single-thread jobs in parallel, same software as protocol_v3_amend1.json. Every number in a cell comes from AutoDL: T=96 cells reuse the AutoDL QDF, SIGMA_I and PLUGIN_A<a> runs of runs_v3_autodl.jsonl; T=720 cells rerun QDF, SIGMA_I and the 7 PLUGIN_A<a> arms on AutoDL (local T=720 results kept, used only for a cross-platform check).",
+  "code": "fixed_sigma_patch.py adds modes covy_abs, lw, spectrum_random (new function _moments: the same training-set pass as _residual_moment, also accumulating label moments and sum ||e||^4); existing modes unchanged. Runner run_grid_v4.py, output results/runs_v4_autodl.jsonl, work dirs runs_v4/. Summary summarize_v4.py -> results/summary_v4.json.",
+  "grid": {"datasets": ["ETTh1", "ETTh2"], "pred_len": [96, 720], "seeds": [2021, 2022, 2023, 2024, 2025]},
+  "a_grid": [0.01, 0.03, 0.1, 0.25, 0.5, 1, 2],
+  "arms": {
+    "COVY_A<a>": "Sigma = I + a*Cyn, Cy = E[(y - m)(y - m)^T] over (sample, channel) of the training labels in the model's loss space (same y as in S0), m = per-horizon-step mean, Cyn = Cy*T/tr(Cy); a in a_grid",
+    "COVY_VAL": "derived: per (cell, seed) the COVY_A<a> run with the lowest best validation MSE (same rule and tie-break as PLUGIN_VAL in protocol_v3)",
+    "PLUGIN_VAL": "as protocol_v3, recomputed from AutoDL runs (T=720 from the v4 reruns)",
+    "LW": "Ledoit-Wolf (2004) shrinkage of S0 towards mu*I, mu = tr(S0)/T, treating the n (sample, channel) residual vectors as the sample: d2 = ||S0 - mu I||_F^2, b2 = (sum_k ||e_k||^4 - n ||S0||_F^2)/n^2, delta = min(1, b2/d2); Sigma = delta*I + (1-delta)*S0n, i.e. the LW estimate divided by mu (a_equiv = (1-delta)/delta is recorded for comparison with the a grid); if delta < 1e-6 fall back to S0n + 1e-3 I. Pre-run change (smoke test, before any formal run): the first smoke used the equivalent-up-to-scale form I + a_equiv*S0n, which with delta ~ 3e-4 gave eig_max ~ 7e5 and inject_max_abs_err 2.7e-3 > 1e-3 at ETTh1-720; the trace-T scaling above is the same estimator up to a global factor and keeps the injection exact. The overlapping windows violate LW's i.i.d. assumption; this is a known limitation and is part of what is tested.",
+    "SPECTRUM_RANDOM": "a = the per-seed validation-selected a of PLUGIN_VAL in results/summary_v3_amend1.json (T=96: AutoDL; T=720: local platform selection, fixed before v4); Sigma = Q diag(eig(I + a*S0n)) Q^T with Q Haar-random (torch.Generator seeded with the run seed, QR with sign correction). Matched comparator: PLUGIN_A<same a> on AutoDL, same seed."
+  },
+  "quantities": {
+    "g_X": "per seed (MSE_SIGMA_I - MSE_X)/MSE_SIGMA_I",
+    "R_X": "mean g_X / mean g_QDF per cell",
+    "D_label": "per seed g_PLUGIN_VAL - g_COVY_VAL",
+    "D_struct": "per seed g_PLUGIN_A<selected a> - g_SPECTRUM_RANDOM"
+  },
+  "analysis_cells": "ETTh1-96, ETTh2-96, ETTh2-720; ETTh1-720 descriptive only (as v1-v3)",
+  "decision_rules": {
+    "Q4.1": {
+      "LABEL_COV_EQUIVALENT": "in >= 2 of 3 analysis cells: R_COVY_VAL >= 0.8 and |mean D_label| <= 0.25 * mean g_QDF",
+      "RESIDUAL_BETTER": "in >= 2 of 3 analysis cells: mean D_label > 0.25 * mean g_QDF and D_label > 0 for >= 4/5 seeds",
+      "LABEL_BETTER": "in >= 2 of 3 analysis cells: mean D_label < -0.25 * mean g_QDF and D_label < 0 for >= 4/5 seeds",
+      "MIXED": "otherwise"
+    },
+    "Q4.2": {
+      "STRUCTURE_MATTERS": "in >= 2 of 3 analysis cells: R_SPECTRUM_RANDOM < 0.5 and D_struct > 0 for >= 4/5 seeds",
+      "SPECTRUM_SUFFICES": "in >= 2 of 3 analysis cells: R_SPECTRUM_RANDOM >= 0.8",
+      "PARTIAL": "otherwise"
+    },
+    "Q4.3": {
+      "AUTO_SHRINK_WORKS": "in >= 2 of 3 analysis cells: R_LW >= 0.8 with g_LW > 0 for >= 4/5 seeds",
+      "AUTO_SHRINK_FAILS": "in >= 2 of 3 analysis cells: R_LW < 0.5",
+      "PARTIAL": "otherwise"
+    },
+    "secondary": "each COVY_A<a> R per cell with bands; LW delta and a_equiv per run; cos(S0, Cy), cos(S0, E[yy^T]) and ||S0 - E[yy^T]||/||E[yy^T]|| per run; AutoDL-vs-local T=720 relative MSE differences and whether g_QDF / R_PLUGIN_VAL bands change"
+  },
+  "engineering_check": "1-epoch, warmup_steps 5 smoke of covy_abs, lw, spectrum_random at ETTh2-96 and ETTh1-720 in smoke_v4*/: sigma_target.json written, inject_max_abs_err < 1e-3, test MSE produced, no new stub runtime use; spectrum_random target eigenvalues equal eig(I + a S0n) to 1e-6 relative.",
+  "integrity": "all runs (including failures) appended to results/runs_v4_autodl.jsonl; failures rerun only via the resumable runner; summary only from summarize_v4.py; any further analysis is a new protocol version labelled post hoc"
+}

@@ -1,0 +1,76 @@
+{
+  "protocol_id": "Q1B_V7_SECOND_BACKBONES_GPU",
+  "status": "FROZEN before any formal v7 run. Post hoc: designed after Q1A_V3(+AMEND1), Q1A_V4 (ETTh1/ETTh2, TQNet) and Q1B_V5 (ETTm1/ETTm2/Weather/ECL, TQNet: Q5.1 MIXED, Q5.2 RESIDUAL_BETTER, Q5.3 STRUCTURE_MATTERS). Scope chosen by the user on 2026-10-11 (datasets ECL + Weather, backbones iTransformer + DLinear, 5 seeds, pred_len 96 and 720, 5-point a grid, arms QDF / Sigma=I / plug-in / label-cov / random-direction). Only 1-epoch smoke runs (smoke_v7/) precede freezing; they are engineering checks and timing only and are excluded from all analyses.",
+  "frozen_at": "2026-10-11 18:40 CST",
+  "engineering_check": "smoke_v7/ (2026-10-11 18:03-18:33, train_epochs 1, seed 2021): QDF and SIGMA_I for all 6 cells, PLUGIN_A0.1 (iTransformer/ECL-96), COVY_A0.1 (DLinear/Weather-720), SPECTRUM_RANDOM a=0.1 (iTransformer/Weather-720); 15/15 returncode 0 with parsed test MSE; inject_max_abs_err <= 2.2e-6; spectrum_max_rel_err 6.6e-16; peak RSS 12.7 GB (ECL-96), 10.6 GB (Weather-720), 3.6 GB (Weather-96), within run_grid_v5.MEM_GB. Timing with 5 concurrent jobs: iTransformer meta phase 490-725 s and 39-66 s per epoch; DLinear meta phase 99-256 s and 11-16 s per epoch. Smoke results are excluded from all analyses.",
+  "questions": {
+    "Q7.0": "For iTransformer and DLinear trained inside the released QDF code, in which (dataset, horizon) cells does QDF reproduce a gain over its paired Sigma = I control (this defines the analysis cells)?",
+    "Q7.1": "In those cells, does the closed-form plug-in Sigma = I + a*S0n with validation-selected a recover the QDF gain?",
+    "Q7.2": "Is the residual second moment better than the label covariance?",
+    "Q7.3": "Do the eigen-directions matter, not only the spectrum?"
+  },
+  "platform": "AutoDL (Chongqing A / machine 703), RTX 4080 SUPER 32 GB, 16 vCPU quota, cgroup memory.high 60 GiB, torch 2.13.0+cu130, /root/miniconda3/bin/python. All v7 runs on this GPU; none on CPU. OMP_NUM_THREADS=1 per job; parallel jobs under the v5 resident-memory reservation (run_grid_v5.MEM_GB, budget 50 GB).",
+  "backbone_hyperparameters": {
+    "source": "official backbone scripts, see research_notes/v5_inputs.md (thuml/iTransformer @ c2426e68, cure-lab/LTSF-Linear @ 0c113668); the QDF release has no iTransformer/DLinear scripts",
+    "iTransformer": "e_layers 3, d_model 512, d_ff 512, n_heads 8, dropout 0.1, factor 1, gelu, timeF embedding, instance normalisation (always on in QDF's models/iTransformer.py, = official use_norm True); ECL lr 5e-4 batch 16; Weather lr 1e-4 batch 32; train_epochs 10, patience 3, lradj type1",
+    "DLinear": "moving_avg 25, individual 0 (shared); ECL lr 1e-3 batch 16; Weather lr 1e-4 batch 16; train_epochs 10, patience 3, lradj type1. Deviation: seq_len 96 instead of the official 336, to match the rest of this study and QDF's own DLinear baseline (QDF Table 6, history 96). QDF's models/DLinear.py initialises weights to 1/seq_len (TSLib style), the LTSF-Linear release uses the PyTorch default; kept as released by QDF.",
+    "common": "seq_len 96, label_len 48, features M, test_batch_size 1, num_workers 0"
+  },
+  "qdf_hyperparameters": "meta_lr, warmup_steps, num_tasks, meta_inner_steps per (dataset, pred_len) from the QDF release's TQNet scripts (scripts/{ECL,Weather}.sh at eb0693a9, = run_grid_v5.HP); inner_lr = the backbone learning rate (the release always sets inner_lr = learning_rate); first_order 1, overlap_ratio 0, max_norm 5.0, rec_lambda 1.0. QDF's paper tuned N_in, K, eta and lr for its iTransformer results (Fig. 3, values not released); v7 does not tune, so a missing QDF effect here is a statement about QDF with transferred settings only.",
+  "data": "the v5 files already on the host: weather.csv (sha256 9b2b19b1...) and electricity.csv (sha256 7e45845d...) from hf-mirror AutonLab/Timeseries-PILE forecasting/autoformer. (The TSLib HF weather.csv has a different sha256, 34ee981d...; not used, so that v5 and v7 share the same file.)",
+  "grid": {"backbones": ["iTransformer", "DLinear"], "datasets": ["ECL", "Weather"], "pred_len": [96, 720],
+           "seeds": [2021, 2022, 2023, 2024, 2025], "rep_seed": 2021,
+           "excluded_cells": {"ECL-720": "one ECL-720 job needs about 38 GB resident memory (QDF's itertools.cycle cache), so jobs can only run one at a time; same exclusion as v5."}},
+  "cells": ["iTransformer/ECL-96", "iTransformer/Weather-96", "iTransformer/Weather-720",
+            "DLinear/ECL-96", "DLinear/Weather-96", "DLinear/Weather-720"],
+  "a_grid": [0.01, 0.03, 0.1, 0.3, 1],
+  "a_grid_rationale": "half-decade spacing; covers every validation-selected a in v3-v5 (0.01-0.5) and most oracle a values (v4 ETTh oracle a = 2 lies outside)",
+  "stages": {
+    "A": "all 6 cells x 5 seeds, arms QDF, SIGMA_I, PLUGIN_A<a> for a in a_grid (7 arms, 210 runs), plus SIGMA_I_REP for rep_seed in each cell (6 runs).",
+    "B": "only after stage A is complete, only in the analysis cells: COVY_A<a> for a in a_grid and SPECTRUM_RANDOM (6 arms x 5 seeds per analysis cell). If no cell qualifies, stage B is not run."
+  },
+  "arms": {
+    "QDF": "released QDF (meta-learned Sigma) with the backbone above",
+    "SIGMA_I": "same command with --meta_lr 0 (Sigma stays I; shares initialisation, meta-phase RNG consumption and batch order with QDF)",
+    "SIGMA_I_REP": "exact repeat of SIGMA_I at rep_seed, GPU run-to-run noise",
+    "PLUGIN_A<a>": "as protocol_v3/v5: Sigma = I + a*S0n injected after the (meta_lr 0) meta phase, S0 = training-set second moment of the initial residual, S0n = S0*T/tr(S0)",
+    "PLUGIN_VAL": "lowest best validation MSE over the 5 PLUGIN_A<a> runs, ties to the smaller a; test MSE never used",
+    "COVY_A<a>": "as protocol_v4/v5 (Sigma = I + a*Cyn, Cyn = Cov(Y_train)*T/tr)",
+    "COVY_VAL": "as PLUGIN_VAL over COVY_A<a>",
+    "SPECTRUM_RANDOM": "as protocol_v4/v5: eigenvalues of I + a*S0n with Haar-random eigenvectors (rotation seeded by the run seed), a = the per-seed PLUGIN_VAL a; matched comparator PLUGIN_A<same a>, same seed"
+  },
+  "quantities": {
+    "g_X": "per seed (MSE_SIGMA_I - MSE_X)/MSE_SIGMA_I (test MSE)",
+    "R_X": "mean g_X / mean g_QDF per cell",
+    "nu": "|MSE_SIGMA_I_REP - MSE_SIGMA_I| / MSE_SIGMA_I at rep_seed",
+    "D_label": "per seed g_PLUGIN_VAL - g_COVY_VAL",
+    "D_struct": "per seed g_PLUGIN_A<selected a> - g_SPECTRUM_RANDOM"
+  },
+  "analysis_cells": "a cell is an analysis cell iff g_QDF > 0 for >= min_pos of 5 seeds and mean g_QDF >= max(0.005, 3*nu). Fixed from stage A before stage B is launched; other cells are reported descriptively.",
+  "decision_rules": {
+    "min_pos": 4,
+    "min_pos_rationale": "with 5 seeds, every 'for all seeds' rule of v5 (3/3) becomes '>= 4/5', tolerating one discordant seed; the magnitude thresholds are unchanged",
+    "scope": "verdicts are computed separately for each backbone (its own n and k) and once pooled over all analysis cells; the per-backbone verdicts are primary",
+    "k": "with n analysis cells, k = ceil(2n/3); n < 2 gives INSUFFICIENT_CELLS",
+    "Q7.1": {
+      "META_LEARNING_UNNECESSARY_GENERALISES": "in >= k analysis cells: R_PLUGIN_VAL >= 0.8 and g_PLUGIN_VAL > 0 for >= min_pos seeds",
+      "META_LEARNING_ADDS_VALUE": "in >= k analysis cells: R_PLUGIN_VAL < 0.5",
+      "MIXED": "otherwise"
+    },
+    "Q7.2": {
+      "LABEL_COV_EQUIVALENT": "in >= k analysis cells: R_COVY_VAL >= 0.8 and |mean D_label| <= 0.25 * mean g_QDF",
+      "RESIDUAL_BETTER": "in >= k analysis cells: mean D_label > 0.25 * mean g_QDF and D_label > 0 for >= min_pos seeds",
+      "LABEL_BETTER": "in >= k analysis cells: mean D_label < -0.25 * mean g_QDF and D_label < 0 for >= min_pos seeds",
+      "MIXED": "otherwise"
+    },
+    "Q7.3": {
+      "STRUCTURE_MATTERS": "in >= k analysis cells: R_SPECTRUM_RANDOM < 0.5 and D_struct > 0 for >= min_pos seeds",
+      "SPECTRUM_SUFFICES": "in >= k analysis cells: R_SPECTRUM_RANDOM >= 0.8",
+      "PARTIAL": "otherwise"
+    },
+    "order": "Q7.2 rules are checked in the listed order (as v4/v5)",
+    "secondary": "per cell: g_QDF per seed, nu, every PLUGIN_A<a> and COVY_A<a> R with bands RECOVERS (>= 0.8) / PARTIAL / FAILS (< 0.5), selected vs oracle a, cos(S0, Cy), run times; descriptive cells reported with the same table but no verdict. TQNet on the same cells is available from v5 (3 seeds, 7-point grid) and is compared descriptively only."
+  },
+  "code": "run_grid_v7.py (--stage A|B, --smoke DIR), fixed_sigma_patch.py (as installed for v6; only plugin_abs, covy_abs and spectrum_random are used), summarize_v7.py -> results/summary_v7.json; runs appended to results/runs_v7.jsonl, work dirs runs_v7/.",
+  "integrity": "all runs (including failures) appended to results/runs_v7.jsonl; failures rerun only through the resumable runner; verdicts only from summarize_v7.py; anything else is a new, post hoc labelled analysis."
+}

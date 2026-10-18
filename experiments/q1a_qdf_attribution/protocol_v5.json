@@ -1,0 +1,65 @@
+{
+  "protocol_id": "Q1B_V5_GENERALISATION_GPU",
+  "status": "post hoc: designed after Q1A_V3(+AMEND1) META_LEARNING_UNNECESSARY and Q1A_V4 (RESIDUAL_BETTER / STRUCTURE_MATTERS / AUTO_SHRINK_FAILS), all on ETTh1/ETTh2 with TQNet. Frozen before any v5 formal run; only 1-epoch smoke tests (smoke_v5a/, smoke_v5b/) were run, used for engineering checks, timing and memory only, and are excluded from all analyses.",
+  "frozen_at": "2026-10-11",
+  "questions": {
+    "Q5.0": "On which further datasets/horizons does the released QDF reproduce a gain over its paired Sigma = I control at all (this defines the analysis cells)?",
+    "Q5.1": "In those cells, does the closed-form plug-in Sigma = I + a*S0n with validation-selected a recover the QDF gain (generalisation of the v3 verdict)?",
+    "Q5.2": "Is the residual second moment better than the label covariance (generalisation of v4 Q4.1)?",
+    "Q5.3": "Do the eigen-directions matter, not only the spectrum (generalisation of v4 Q4.2)?"
+  },
+  "platform": "AutoDL (Chongqing A / machine 703), RTX 4080 SUPER 32 GB, 16 vCPU quota, cgroup memory.high 60 GiB, torch 2.13.0+cu130, /root/miniconda3/bin/python. Every run of v5 executes on this GPU; nothing is mixed with CPU runs. OMP_NUM_THREADS=1 per job; jobs run in parallel under a resident-memory reservation (run_grid_v5.MEM_GB, budget 50 GB), because the released QDF code wraps each meta-task DataLoader in itertools.cycle and therefore caches the whole training set in host memory (unchanged, to stay faithful to the release).",
+  "backbone_and_hyperparameters": "TQNet with the QDF release's own per-dataset scripts (scripts/{ETTm1,ETTm2,Weather,ECL}.sh at commit eb0693a9): learning_rate = inner_lr, meta_lr, warmup_steps, num_tasks, meta_inner_steps per (dataset, pred_len) as in run_grid_v5.HP; batch_size 32 (ECL 16), dropout 0.5 (ECL 0.0), cycle 96/96/144/168, seq_len 96, lradj type1, train_epochs 30, patience 5, test_batch_size 1, first_order 1, overlap_ratio 0, num_workers 0. Identical across arms except the Sigma treatment.",
+  "data": "ETTm1/ETTm2 from the repository's ETT-small; weather.csv (sha256 9b2b19b1...) and electricity.csv (sha256 7e45845d...) from hf-mirror AutonLab/Timeseries-PILE forecasting/autoformer (the standard Autoformer files; ETTh1/ETTh2 from the same source are value-identical to ours).",
+  "grid": {"datasets": ["ETTm1", "ETTm2", "Weather", "ECL"], "pred_len": [96, 720], "seeds": [2021, 2022, 2023],
+           "excluded_cells": {"ECL-720": "one ECL-720 job needs about 38 GB resident memory (itertools.cycle cache), so it can only run alone; 30+ runs would take more than a day. Not run in v5."}},
+  "cells": ["ETTm1-96", "ETTm1-720", "ETTm2-96", "ETTm2-720", "Weather-96", "Weather-720", "ECL-96"],
+  "a_grid": [0.01, 0.03, 0.1, 0.25, 0.5, 1, 2],
+  "stages": {
+    "A": "all 7 cells x 3 seeds, arms QDF, SIGMA_I, SIGMA_I_REP, PLUGIN_A<a> for a in a_grid (10 arms, 210 runs).",
+    "B": "only after stage A is complete, only in the analysis cells defined below: COVY_A<a> for a in a_grid and SPECTRUM_RANDOM (8 arms x 3 seeds per analysis cell). If no cell qualifies, stage B is not run."
+  },
+  "arms": {
+    "QDF": "released QDF (meta-learned Sigma), run_grid.qdf_cmd semantics with the v5 hyper-parameters",
+    "SIGMA_I": "same command with --meta_lr 0 (Sigma stays I; shares initialisation, meta-phase RNG consumption and batch order with QDF)",
+    "SIGMA_I_REP": "an exact repeat of SIGMA_I (same seed, same command) to measure GPU run-to-run nondeterminism",
+    "PLUGIN_A<a>": "as protocol_v3: SIGMA_I command, Sigma = I + a*S0n injected after the (meta_lr 0) meta phase, S0 = training-set second moment of the initial residual, S0n = S0*T/tr(S0)",
+    "PLUGIN_VAL": "derived as protocol_v3 (lowest best validation MSE over the 7 PLUGIN_A<a> runs, ties to the smaller a; test MSE never used)",
+    "COVY_A<a>": "as protocol_v4 (Sigma = I + a*Cyn, Cyn = Cov(Y_train)*T/tr)",
+    "COVY_VAL": "derived as protocol_v4",
+    "SPECTRUM_RANDOM": "as protocol_v4 (eigenvalues of I + a*S0n with Haar-random eigenvectors, rotation seeded by the run seed), with a = the per-seed PLUGIN_VAL-selected a from stage A; matched comparator PLUGIN_A<same a>, same seed"
+  },
+  "quantities": {
+    "g_X": "per seed (MSE_SIGMA_I - MSE_X)/MSE_SIGMA_I (test MSE)",
+    "R_X": "mean g_X / mean g_QDF per cell",
+    "nu": "GPU noise per cell: mean over seeds of |MSE_SIGMA_I_REP - MSE_SIGMA_I| / MSE_SIGMA_I",
+    "D_label": "per seed g_PLUGIN_VAL - g_COVY_VAL",
+    "D_struct": "per seed g_PLUGIN_A<selected a> - g_SPECTRUM_RANDOM"
+  },
+  "analysis_cells": "a cell is an analysis cell iff g_QDF > 0 for 3/3 seeds and mean g_QDF >= max(0.005, 3*nu). Fixed from stage A before stage B is launched; the other cells are reported descriptively.",
+  "decision_rules": {
+    "k": "with n analysis cells, k = ceil(2n/3) (n=2 -> 2, 3 -> 2, 4 -> 3, 5 -> 4, 6 -> 4, 7 -> 5)",
+    "Q5.0": {"QDF_EFFECT_REPRODUCED_IN_n_CELLS": "report n and the list; if n < 2 the Q5.1-Q5.3 verdicts are INSUFFICIENT_CELLS"},
+    "Q5.1": {
+      "META_LEARNING_UNNECESSARY_GENERALISES": "in >= k analysis cells: R_PLUGIN_VAL >= 0.8 and g_PLUGIN_VAL > 0 for 3/3 seeds",
+      "META_LEARNING_ADDS_VALUE": "in >= k analysis cells: R_PLUGIN_VAL < 0.5",
+      "MIXED": "otherwise"
+    },
+    "Q5.2": {
+      "LABEL_COV_EQUIVALENT": "in >= k analysis cells: R_COVY_VAL >= 0.8 and |mean D_label| <= 0.25 * mean g_QDF",
+      "RESIDUAL_BETTER": "in >= k analysis cells: mean D_label > 0.25 * mean g_QDF and D_label > 0 for 3/3 seeds",
+      "LABEL_BETTER": "in >= k analysis cells: mean D_label < -0.25 * mean g_QDF and D_label < 0 for 3/3 seeds",
+      "MIXED": "otherwise"
+    },
+    "Q5.3": {
+      "STRUCTURE_MATTERS": "in >= k analysis cells: R_SPECTRUM_RANDOM < 0.5 and D_struct > 0 for 3/3 seeds",
+      "SPECTRUM_SUFFICES": "in >= k analysis cells: R_SPECTRUM_RANDOM >= 0.8",
+      "PARTIAL": "otherwise"
+    },
+    "order": "Q5.2 rules are checked in the listed order (as v4)",
+    "secondary": "per cell: g_QDF per seed, nu, every PLUGIN_A<a> and COVY_A<a> R with bands RECOVERS (>= 0.8) / PARTIAL / FAILS (< 0.5), selected vs oracle a, cos(S0, Cy), run times; descriptive cells reported with the same table but no verdict. Shape of the learned QDF Sigma vs S0n (and S0n + Diag S0n), as analyze_sigma_shape.py, from the kept QDF A.pth and PLUGIN_A1 sigma_target.npy: descriptive."
+  },
+  "engineering_check": "smoke_v5a/ (QDF 1 epoch, all 8 cells, seed 2021) and smoke_v5b/ (PLUGIN_A0.25, COVY_A0.25 and SPECTRUM_RANDOM at a=0.25 on GPU, 1 epoch): returncode 0, test MSE parsed, sigma_target.json written with inject_max_abs_err < 1e-3, spectrum relative error < 1e-6; peak resident memory measured by remote/mem_poll.sh. smoke_v5a was stopped at 5/11 runs when two concurrent ECL-720 jobs hit the container memory limit; this motivated the memory reservation and the ECL-720 exclusion.",
+  "code": "run_grid_v5.py (--stage A|B), fixed_sigma_patch.py (GPU device fixes only: moments moved to CPU before accumulation; no change of the estimators), summarize_v5.py -> results/summary_v5.json; runs appended to results/runs_v5.jsonl, work dirs runs_v5/.",
+  "integrity": "all runs (including failures) appended to results/runs_v5.jsonl; failures rerun only through the resumable runner; verdicts only from summarize_v5.py; anything else is a new, post hoc labelled analysis."
+}

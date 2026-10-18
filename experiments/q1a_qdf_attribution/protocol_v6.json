@@ -1,0 +1,34 @@
+{
+  "protocol_id": "Q1B_V6_TRACE_MATCHED_SHAPE",
+  "status": "post hoc: designed after v5 stage A (Q5.1 MIXED: validation-selected a recovers R 0.72 / 0.41 / 0.81 / 0.96 in the 4 analysis cells, while the best fixed a recovers 0.86-1.03) and before v5 stage B finished. Frozen before any v6 run. It does not test whether meta-learning is unnecessary (one scalar is taken from the learned Sigma); it tests whether the learned Sigma's shape is the one-step residual-moment shape predicted by paper/derivations/qdf_meta_gradient.md on new datasets, separating shape from the choice of a.",
+  "frozen_at": "2026-10-11",
+  "questions": {
+    "Q6.0": "Sanity: does re-injecting the learned Sigma of the v5 QDF run into the paired SIGMA_I command reproduce the QDF test MSE (pipeline check)?",
+    "Q6.1": "Given the learned Sigma's trace, does I + c*S0 recover the QDF gain?",
+    "Q6.2": "Given the learned Sigma's trace, does the derivation's one-step shape I + c*(S0 + Diag S0) recover the QDF gain, and is it closer to the learned Sigma than I + c*S0?"
+  },
+  "platform": "same as protocol_v5.json (AutoDL RTX 4080 SUPER, same software, same memory-reserving scheduler)",
+  "cells": ["ETTm1-96", "ETTm2-96", "ETTm2-720", "Weather-720"],
+  "cells_reason": "the 4 v5 analysis cells (fixed by protocol_v5 rules from stage A)",
+  "seeds": [2021, 2022, 2023],
+  "arms": {
+    "LEARNED": "SIGMA_I command (--meta_lr 0), then Sigma = Sigma_l of runs_v5/QDF_<cell>_<seed> (fixed_sigma_patch mode learned)",
+    "PLUGIN_MATCHED": "Sigma = I + c*S0, c = (tr Sigma_l - T)/tr S0 (mode plugin, unchanged from v2)",
+    "PLUGIN_DIAG_MATCHED": "Sigma = I + c*(S0 + Diag S0), c = (tr Sigma_l - T)/(2 tr S0) (new mode plugin_diag)"
+  },
+  "comparators": "QDF and SIGMA_I test MSE from results/runs_v5.jsonl (same platform, same seed)",
+  "quantities": {
+    "g_X": "per seed (MSE_SIGMA_I - MSE_X)/MSE_SIGMA_I",
+    "R_X": "mean g_X / mean g_QDF per cell",
+    "rel_learned": "per seed |MSE_LEARNED - MSE_QDF| / MSE_QDF",
+    "shape_fit": "per seed cos(Sigma_l - I, S0) and cos(Sigma_l - I, S0 + Diag S0) and ||Sigma_l - Sigma_target||_F / ||Sigma_l - I||_F, recorded in sigma_target.json"
+  },
+  "decision_rules": {
+    "Q6.0": {"PIPELINE_OK": "max rel_learned <= 0.005 over all 12 runs", "PIPELINE_DEVIATES": "otherwise (then Q6.1/Q6.2 are reported but flagged)"},
+    "Q6.1": {"RECOVERS": "R_PLUGIN_MATCHED >= 0.8 and g > 0 for 3/3 seeds in >= 3 of 4 cells", "FAILS": "R < 0.5 in >= 3 of 4 cells", "PARTIAL": "otherwise"},
+    "Q6.2": {"RECOVERS": "same rule for PLUGIN_DIAG_MATCHED", "FAILS": "R < 0.5 in >= 3 of 4 cells", "PARTIAL": "otherwise",
+             "shape_closer": "count of the 12 runs with cos(Sigma_l - I, S0 + Diag S0) > cos(Sigma_l - I, S0), descriptive"}
+  },
+  "code": "fixed_sigma_patch.py adds mode plugin_diag and records cos_learned_S0, cos_learned_S0diag, relfro_learned_minus_target for plugin and plugin_diag (no change to other modes); copied over the v5 version only after v5 is packed. Runner run_grid_v6.py -> results/runs_v6.jsonl, runs_v6/; summary summarize_v6.py -> results/summary_v6.json.",
+  "integrity": "all runs appended to results/runs_v6.jsonl; verdicts only from summarize_v6.py; anything else post hoc labelled."
+}

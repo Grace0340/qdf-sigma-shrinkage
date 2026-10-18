@@ -1,0 +1,35 @@
+{
+  "protocol_id": "Q1A_V3_META_FREE_SHRINKAGE",
+  "status": "post hoc: designed after seeing Q1A_V1 (learned Sigma helps in 3 of 4 cells) and Q1A_V2 (PLUGIN_SUFFICES, but with the shrinkage scale c borrowed from the meta-learned Sigma's trace); frozen before any v3 formal run (only 1-epoch smoke tests in smoke_v3_* directories, excluded from analysis)",
+  "frozen_at": "2026-10-10",
+  "question": "Is the Sigma gain obtainable with no information from meta-learning, i.e. with the shrinkage scale of Sigma = I + a*S0n chosen on the validation set? Does unshrunk whitening of the initial residuals (full FGLS) behave differently?",
+  "code": "Same as v1/v2 (QDF eb0693a9 unmodified, cpu_launch.py) plus fixed_sigma_patch.py with two new modes: plugin_abs (reads Q1_PLUGIN_A) and fgls (reads Q1_FGLS_RIDGE, default 1e-3). Q1_LEARNED_A is loaded only by modes that need it (learned, scalar, diag, topk, plugin); the new modes never read any v1 QDF artifact. Existing modes unchanged except an added s0_seconds timing field in sigma_target.json for plugin.",
+  "shared_setup": "Each arm uses the v1 QDF arm's exact command except --meta_lr 0 (i.e. the v1 SIGMA_I command); the meta phase still runs, so init and batch order match v1 QDF and SIGMA_I for the same seed. After the meta phase, S0 = E[e e^T] over (sample, channel) of the untrained initial model on the full training set (eval mode, sequential, RNG state saved/restored), S0n = S0 * T / tr(S0), and L := chol(Sigma_target).",
+  "grid": {"datasets": ["ETTh1", "ETTh2"], "pred_len": [96, 720], "seeds": [2021, 2022, 2023, 2024, 2025]},
+  "a_grid": [0.01, 0.03, 0.1, 0.25, 0.5, 1, 2],
+  "a_grid_rationale": "The task brief proposed {0.1, 0.25, 0.5, 1, 2}. 0.01 and 0.03 were added before freezing because S0n has a dominant eigenvalue of order 10^2 at T=720 (v2: I + c*S0 reached eig_max ~40 at a-equivalent ~0.11), so a ~0.01 is already a strong reweighting, and a grid starting at 0.1 could not represent the weak-shrinkage regime. The v2 trace-matched plug-in corresponds to a = tr(S_learned)/T - 1, i.e. ~0.51 (ETTh1-96), ~0.007 (ETTh1-720), ~0.56 (ETTh2-96), ~0.11 (ETTh2-720); this knowledge informed only the span of the grid, which is a common, log-spaced grid for all cells, and the selection itself uses no meta-learned quantity. Large a is covered by FGLS_FULL: because Adam is (up to eps) invariant to a global loss scale, I + a*S0n is equivalent to I/a + S0n, so a -> infinity approaches FGLS_FULL.",
+  "arms": {
+    "PLUGIN_A<a>": "Sigma = I + a*S0n for each a in a_grid (run_id PLUGIN_A<a>_<ds>_<T>_<seed>, env Q1_SIGMA_MODE=plugin_abs, Q1_PLUGIN_A=<a>)",
+    "PLUGIN_VAL": "derived, no extra runs: for each (dataset, T, seed) take the PLUGIN_A<a> run with the lowest best validation MSE, defined as the minimum over epochs of the finite 'Valid ... MSE' values printed by QDF meta_test (the early-stopping criterion, i.e. the validation MSE of the checkpoint used for testing); report that run's test MSE. Ties broken towards the smaller a. Test MSE never enters the selection. If any of the 7 a-runs for a (dataset, T, seed) is missing or failed, PLUGIN_VAL for that seed is undefined and the verdict is INCOMPLETE until the resumable runner fills it.",
+    "FGLS_FULL": "Sigma = S0n + 1e-3*I (unshrunk whitening of the initial residuals; env Q1_SIGMA_MODE=fgls)"
+  },
+  "reuse": "QDF and SIGMA_I test MSEs are taken from v1 results/runs.jsonl (same code path, same seeds); not rerun.",
+  "quantities": {
+    "g_X": "per seed (MSE_SIGMA_I - MSE_X)/MSE_SIGMA_I, paired by seed",
+    "R_X": "mean g_X / mean g_QDF, per cell"
+  },
+  "analysis_cells": "ETTh1-96, ETTh2-96, ETTh2-720. ETTh1-720 is reported descriptively only (v1: no Sigma effect).",
+  "decision_rules": {
+    "META_LEARNING_UNNECESSARY": "R_PLUGIN_VAL >= 0.8 with g_PLUGIN_VAL > 0 for >= 4/5 seeds, in >= 2 of 3 analysis cells",
+    "META_LEARNING_ADDS_VALUE": "R_PLUGIN_VAL < 0.5 in >= 2 of 3 analysis cells",
+    "PARTIAL": "otherwise",
+    "secondary": "For FGLS_FULL and each fixed PLUGIN_A<a>, report R per cell with bands RECOVERS (>= 0.8) / PARTIAL / FAILS (< 0.5) and seeds positive; no overall verdict"
+  },
+  "descriptive_only": [
+    "selected a per (cell, seed) and best validation MSE per a",
+    "oracle a chosen by test MSE, reported only to show the gap to validation selection; never used for any verdict",
+    "cost: QDF meta-phase wall time (sum of 'Step: N cost time' lines in v1 QDF stdout, warmup_steps=300), S0 computation time (s0_seconds in sigma_target.json), meta-test training time (sum of 'Epoch: N cost time' plus validation time) and total run seconds per arm. Runs execute 14 in parallel with 1 thread each, so wall times are comparable within this grid but not absolute benchmarks. Note that every v3 run still executes the (inert, meta_lr 0) meta phase to keep init and batch order paired; the meta-free procedure's cost is S0 time + 7 meta-test trainings."
+  ],
+  "engineering_check": "Before formal runs: 1-epoch, warmup_steps 5 smoke test of plugin_abs and fgls in new smoke_v3_* directories; check that sigma_target.json is written, inject_max_abs_err < 1e-3, target trace/T = 1 + a (plugin_abs) or 1 + 1e-3 (fgls), the run produces a test MSE, and no stub runtime use. Q1_LEARNED_A is not set for these modes, which verifies that they do not depend on the learned Sigma.",
+  "integrity": "all runs (including failures) appended to results/runs_v3.jsonl; summary only from summarize_v3.py (results/summary_v3.json); failed runs are rerun only via the resumable run_grid_v3.py; any further analysis is a new protocol version labelled post hoc"
+}

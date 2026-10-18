@@ -1,0 +1,222 @@
+# Uncertainty, frozen verdicts and omitted-arm numbers for paper/main.tex.
+# Reads the frozen summary files only; no training or model evaluation.
+#   python paper/scripts/stats_checks.py
+import json
+import math
+import os
+import re
+
+import numpy as np
+from scipy import stats
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+PAPER = os.path.dirname(HERE)
+RES = os.path.join(PAPER, "..", "experiments", "q1a_qdf_attribution", "results")
+OUT = os.path.join(PAPER, "generated")
+
+
+def load(name):
+    with open(os.path.join(RES, name), encoding="utf-8") as f:
+        return json.load(f)
+
+
+def tci(x):
+    x = np.asarray(x, float)
+    m = x.mean()
+    h = stats.t.ppf(0.975, len(x) - 1) * x.std(ddof=1) / math.sqrt(len(x))
+    return m, m - h, m + h
+
+
+v2, v3, v4, v5, v7 = (load(f"summary_{k}.json") for k in ("v2", "v3_amend1", "v4", "v5", "v7"))
+
+cells = []
+for src, s, bb in (("v4", v4, "TQNet"), ("v5", v5, "TQNet"), ("v7", v7, None)):
+    for c in s["cells"]:
+        b, name = (c["cell"].split("/") if bb is None else (bb, c["cell"]))
+        cells.append(dict(src=src, bb=b, name=name, c=c))
+
+rep = {"cells": []}
+for x in cells:
+    c = x["c"]
+    q = np.array(c["arms"]["QDF"]["g_per_seed"])
+    v = np.array(c["arms"]["PLUGIN_VAL"]["g_per_seed"])
+    plug = {k: c["arms"][k] for k in c["arms"] if k.startswith("PLUGIN_A")}
+    best_k = max(plug, key=lambda k: plug[k]["R"] if plug[k]["R"] is not None else -9)
+    rep["cells"].append(dict(
+        src=x["src"], bb=x["bb"], cell=x["name"], analysis=c["analysis"], n=len(q),
+        qdf=tci(q), val=tci(v), diff=tci(v - q),
+        R_val=c["arms"]["PLUGIN_VAL"]["R"], R_best=plug[best_k]["R"], a_best=best_k[8:],
+        a_sel=c["arms"]["PLUGIN_VAL"].get("selected_a"),
+        g_a={k[8:]: (plug[k]["g_mean"], plug[k]["pos"]) for k in plug},
+    ))
+
+A = [r for r in rep["cells"] if r["analysis"]]
+allc = rep["cells"]
+rep["n_analysis"] = len(A)
+rep["analysis_qdf_ci_excl0"] = sum(r["qdf"][1] > 0 for r in A)
+rep["analysis_val_ci_excl0"] = sum(r["val"][1] > 0 for r in A)
+rep["analysis_diff_ci_incl0"] = sum(r["diff"][1] <= 0 <= r["diff"][2] for r in A)
+rep["all_diff_ci_incl0"] = sum(r["diff"][1] <= 0 <= r["diff"][2] for r in allc)
+d_cell = np.array([r["val"][0] - r["qdf"][0] for r in allc])
+rep["wilcoxon_all_val_minus_qdf_p"] = float(stats.wilcoxon(d_cell).pvalue)
+rep["mean_val_minus_qdf_all"] = float(d_cell.mean())
+d_a = np.array([r["val"][0] - r["qdf"][0] for r in A])
+rep["wilcoxon_analysis_val_minus_qdf_p"] = float(stats.wilcoxon(d_a).pvalue)
+rep["uncond_mean_qdf"] = float(np.mean([r["qdf"][0] for r in allc]))
+rep["uncond_mean_val"] = float(np.mean([r["val"][0] for r in allc]))
+tq = [r for r in allc if r["bb"] == "TQNet"]
+rep["tq_n"] = len(tq)
+rep["tq_qdf_pos_mean"] = sum(r["qdf"][0] > 0 for r in tq)
+rep["tq_qdf_ci_excl0"] = sum(r["qdf"][1] > 0 for r in tq)
+rep["rval_gt_rbest"] = [(r["bb"], r["cell"], r["R_val"], r["R_best"]) for r in A if r["R_val"] > r["R_best"]]
+
+rep["frozen_verdicts"] = {
+    "v2": v2["verdict"], "v3_amend1": v3["verdict"], "v4": v4["verdicts"],
+    "v5": {k: v5["verdicts"][k] for k in ("Q5.1", "Q5.2", "Q5.3")},
+    "v7": {k: v7["verdicts"][k]["Q7.1"] for k in ("iTransformer", "DLinear", "pooled")},
+}
+
+rep["v2_arms"] = {c["cell"]: {k: round(a["R"], 2) for k, a in c["arms"].items()} for c in v2["cells"]}
+
+pairs = [abs(p["rel_diff"]) for p in v3["cross_platform"]]
+rep["xplat_v3_n"] = len(pairs)
+rep["xplat_v3_max"] = max(pairs)
+cp4 = None
+for c in v4["cells"]:
+    if c.get("cross_platform"):
+        cp4 = cp4 or {}
+        cp4[c["cell"]] = c["cross_platform"]
+rep["xplat_v4"] = cp4
+
+rep["seconds"] = {f"{x['bb']}/{x['name']}": x["c"]["descriptive"].get("seconds_mean")
+                  for x in cells if x["c"]["descriptive"].get("seconds_mean")}
+
+os.makedirs(OUT, exist_ok=True)
+with open(os.path.join(OUT, "stats.json"), "w", encoding="utf-8") as f:
+    json.dump(rep, f, indent=1, default=float)
+
+
+def pct(x, d=2):
+    s = f"{100 * x:.{d}f}"
+    return s[1:] if s.startswith("-") and float(s) == 0 else s
+
+
+def ci_cell(m, lo, hi, pos=None):
+    s = f"{pct(m)}\\,$\\pm$\\,{pct((hi - lo) / 2)}"
+    return s if pos is None else s + f"\\,({pos})"
+
+
+# ---- Table II rows (all settings, with 95% t-intervals) -------------------
+short = {"TQNet": "TQ", "iTransformer": "iT", "DLinear": "DL"}
+rows, prev = [], ""
+for x, r in zip(cells, allc):
+    c = x["c"]
+    bb = short[r["bb"]] if r["bb"] != prev else ""
+    prev = r["bb"]
+    name = r["cell"].replace("Weather", "Wth") + ("$^\\ast$" if r["analysis"] else "")
+    rows.append(f"{bb} & {name} & {c['arms']['SIGMA_I']['mse_mean']:.3f} & "
+                f"{ci_cell(*r['qdf'], c['arms']['QDF']['pos'])} & "
+                f"{ci_cell(*r['val'], c['arms']['PLUGIN_VAL']['pos'])} & {ci_cell(*r['diff'])} \\\\")
+tex_rows = re.sub(r"(?<![\w.$])-(?=\d)", r"\\ensuremath{-}", "\n".join(rows))
+with open(os.path.join(OUT, "table2_rows.tex"), "w", encoding="utf-8") as f:
+    f.write("% Auto-generated by paper/scripts/stats_checks.py -- do not edit by hand.\n" + tex_rows + "\n")
+
+# ---- macros ----------------------------------------------------------------
+m = {}
+m["NQCIExcl"] = rep["analysis_qdf_ci_excl0"]
+m["NDiffNeg"] = int(sum(d < 0 for d in d_a))
+m["NDiffSig"] = int(sum(r["diff"][2] < 0 or r["diff"][1] > 0 for r in A))
+m["WilcoxA"] = f"{rep['wilcoxon_analysis_val_minus_qdf_p']:.2f}"
+m["WilcoxAll"] = f"{rep['wilcoxon_all_val_minus_qdf_p']:.2f}"
+m["MeanDiffAll"] = pct(rep["mean_val_minus_qdf_all"])
+m["UncondQ"] = pct(rep["uncond_mean_qdf"])
+m["UncondV"] = pct(rep["uncond_mean_val"])
+m["NTQ"] = rep["tq_n"]
+m["NTQPos"] = rep["tq_qdf_pos_mean"]
+m["NTQCI"] = rep["tq_qdf_ci_excl0"]
+other = [r for r in allc if r["bb"] != "TQNet"]
+m["NOther"] = len(other)
+m["NOtherA"] = sum(r["analysis"] for r in other)
+m["NOtherNeg"] = sum(r["qdf"][0] < 0 for r in other)
+ecl = next(r for r in allc if r["bb"] == "TQNet" and r["cell"] == "ECL-96")
+m["EclQ"], m["EclLo"], m["EclHi"] = pct(ecl["qdf"][0]), pct(ecl["qdf"][1]), pct(ecl["qdf"][2])
+m["EclRVal"] = f"{ecl['R_val']:.2f}"
+fv = rep["frozen_verdicts"]
+for k, v in (("VThree", fv["v3_amend1"]), ("VFiveOne", fv["v5"]["Q5.1"]), ("VFiveTwo", fv["v5"]["Q5.2"]),
+             ("VFiveThree", fv["v5"]["Q5.3"]), ("VFourOne", fv["v4"]["Q4.1"]), ("VFourTwo", fv["v4"]["Q4.2"]),
+             ("VFourThree", fv["v4"]["Q4.3"]), ("VSeven", fv["v7"]["pooled"])):
+    m[k] = "\\textsc{" + v.lower().replace("_", "\\_") + "}"
+v2a = {k: v for k, v in rep["v2_arms"].items() if k != "ETTh1-720"}
+m["TopkMin"] = f"{min(v['TOPK8'] for v in v2a.values()):.2f}"
+m["TopkMax"] = f"{max(v['TOPK8'] for v in v2a.values()):.2f}"
+m["DiagMax"] = f"{max(v['DIAG'] for v in v2a.values()):.2f}"
+m["ScalarMin"] = f"{min(v['SCALAR'] for v in v2a.values()):.2f}"
+m["ScalarMax"] = f"{max(v['SCALAR'] for v in v2a.values()):.2f}"
+m["XplatShort"] = pct(rep["xplat_v3_max"])
+m["XplatShortN"] = rep["xplat_v3_n"]
+m["XplatLong"] = pct(rep["xplat_v4"]["ETTh1-720"]["max_abs_rel_diff"])
+m["XplatLongN"] = rep["xplat_v4"]["ETTh1-720"]["n_pairs"]
+h1 = next(r for r in allc if r["cell"] == "ETTh1-720")
+m["EhoneLow"], m["EhoneLowPos"] = pct(h1["g_a"]["0.1"][0], 1), h1["g_a"]["0.1"][1]
+m["EhoneHigh"], m["EhoneHighPos"] = pct(h1["g_a"]["2"][0], 1), h1["g_a"]["2"][1]
+dl = [r for r in allc if r["bb"] == "DLinear"]
+dl_a1 = min(dl, key=lambda r: r["g_a"]["1"][0])
+m["DLaOne"] = pct(dl_a1["g_a"]["1"][0])
+m["DLaOneCell"] = dl_a1["cell"]
+m["DLaOnePos"] = dl_a1["g_a"]["1"][1]
+over = []
+for v in rep["seconds"].values():
+    over.append(v["QDF"] / v["SIGMA_I"] - 1)
+m["MetaOverMax"] = f"{100 * max(over):.0f}"
+m["MetaOverMin"] = f"{100 * min(over):.0f}"
+m["NTimed"] = len(over)
+
+rs = json.load(open(os.path.join(OUT, "resim_meta_T96.json")))
+r7 = json.load(open(os.path.join(OUT, "resim_meta_ETTh2_720_2021.json")))
+m["ResimMin"] = f"{min(r['resim']['err'] for r in rs):.2f}"
+m["ResimMax"] = f"{max(r['resim']['err'] for r in rs):.2f}"
+m["FoMin"] = f"{min(r['first_order']['err'] for r in rs):.2f}"
+m["FoMax"] = f"{max(r['first_order']['err'] for r in rs):.2f}"
+m["SqMin"] = f"{min(r['sqrt_family']['err'] for r in rs):.2f}"
+m["SqMax"] = f"{max(r['sqrt_family']['err'] for r in rs):.2f}"
+m["SpecMin"] = f"{min(r['first_order']['spec'] for r in rs):.1f}"
+m["SpecMax"] = f"{max(r['first_order']['spec'] for r in rs + r7):.1f}"
+m["ResimLong"] = f"{r7[0]['resim']['err']:.2f}"
+m["FoLong"] = f"{r7[0]['first_order']['err']:.2f}"
+
+# fitted replay energy kappa relative to the evaluation-mode energy tr(S0)/T of the same run
+s0e = {}
+for fn in ("runs_v3_autodl.jsonl", "runs_v4_autodl.jsonl"):
+    with open(os.path.join(RES, fn), encoding="utf-8") as fh:
+        for line in fh:
+            r = json.loads(line)
+            st = r.get("sigma_target") or {}
+            if r["arm"].startswith("PLUGIN_A") and "S0_trace_over_T" in st:
+                s0e[f"{r['dataset']}_{r['pred_len']}_{r['seed']}"] = st["S0_trace_over_T"]
+ratios = [r["resim"]["kappa"] / s0e[r["tag"]] for r in rs + r7]
+sup = []
+for r in rs + r7:
+    ds, T, seed = r["tag"].split("_")
+    sup.append(f"{ds} & {T} & {seed} & {r['dev_from_I']:.3f} & {r['first_order']['spec']:.1f} & "
+               f"{r['first_order']['err']:.3f} & {r['sqrt_family']['err']:.3f} & {r['resim']['err']:.3f} & "
+               f"{r['resim']['kappa'] / s0e[r['tag']]:.2f} \\\\")
+with open(os.path.join(OUT, "resim_rows.tex"), "w", encoding="utf-8") as f:
+    f.write("% Auto-generated by paper/scripts/stats_checks.py -- do not edit by hand.\n" + "\n".join(sup) + "\n")
+m["KappaRatioMin"] = f"{min(ratios):.1f}"
+m["KappaRatioMax"] = f"{max(ratios):.1f}"
+with open(os.path.join(OUT, "stats.tex"), "w", encoding="utf-8") as f:
+    f.write("% Auto-generated by paper/scripts/stats_checks.py -- do not edit by hand.\n")
+    for k, v in m.items():
+        v = re.sub(r"(?<![\w.])-(?=\d)", r"\\ensuremath{-}", str(v))
+        f.write(f"\\newcommand{{\\num{k}}}{{{v}}}\n")
+print(json.dumps(m, indent=0, default=str))
+
+for r in allc:
+    print(f"{r['bb'][:2]} {r['cell']:12s} A={int(r['analysis'])} "
+          f"QDF {100*r['qdf'][0]:6.2f} [{100*r['qdf'][1]:6.2f},{100*r['qdf'][2]:6.2f}]  "
+          f"VAL {100*r['val'][0]:6.2f} [{100*r['val'][1]:6.2f},{100*r['val'][2]:6.2f}]  "
+          f"D {100*r['diff'][0]:6.2f} [{100*r['diff'][1]:6.2f},{100*r['diff'][2]:6.2f}]  "
+          f"Rv {r['R_val']:.2f} Rb {r['R_best']:.2f}@{r['a_best']} sel={r['a_sel']}")
+for k, v in rep.items():
+    if k not in ("cells",):
+        print(k, "=", json.dumps(v, default=float)[:900])

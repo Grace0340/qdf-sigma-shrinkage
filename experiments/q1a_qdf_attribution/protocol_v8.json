@@ -1,0 +1,59 @@
+{
+  "protocol_id": "Q1C_V8_FAIR_SELECTION_GPU",
+  "status": "FROZEN before any formal v8 run. Post hoc: designed on 2026-10-12 after the mock review of main_draft_v3 (surrogate slightly below QDF on the 8 analysis cells, Wilcoxon p = 0.04; comparison favours the surrogate because its a is validated while QDF's meta settings are used as released). Scope OPTION_FULL chosen by the user.",
+  "frozen_at": "2026-10-12 11:45 CST",
+  "engineering_check": "smoke_v8_fail_numba/: all 9 smoke jobs failed at import (numba missing on machine 704); numba 0.67.0 installed, the version recorded for machine 703 in protocol_v3_amend1. smoke_v8/ (1 epoch, seed 2021, 9 concurrent): PDIAG_A0.1, REPLAY_K1, QDF_LR8, QDF_LR1, SIGMA_I on TQNet/ETTh1-96, REPLAY_K1 on TQNet/ETTh2-720, REPLAY_K2 on TQNet/Weather-720, QDF_LR4 and REPLAY_K1 on iTransformer/ECL-96: 9/9 returncode 0; replay finite, 0.07-10 s on the GPU; inject_max_abs_err <= 2.5e-6; PDIAG trace/T = 1 + a. extras_v8.py on runs_v4 ETTh2-720 seed 2021 reproduces paper/generated/resim_meta_ETTh2_720_2021.json (replay 0.202, first order 0.247). Smoke results are excluded from all analyses.",
+  "questions": {
+    "Q8.0": "On one GPU platform, does QDF (released settings) still beat its paired SIGMA_I control in the 8 analysis cells of v4/v5/v7? (descriptive; cells are fixed in advance, not re-selected)",
+    "Q8.1": "When QDF also gets a validation-selected hyperparameter (meta learning rate) with a grid of the same size as the surrogate's, does the validated surrogate I + a*S0n still recover >= 80% of QDF_VAL's gain?",
+    "Q8.2": "Does the doubled-diagonal surrogate I + a*D0n, D0n = (S0n + Diag S0n)/2, with validated a beat the plain surrogate I + a*S0n?",
+    "Q8.3": "Does the budget-implied replay surrogate (released meta-SGD replayed on kappa*S0n, no forecaster in the loop) recover the QDF gain, (i) with kappa = tr(S0)/T and no validation (one run), (ii) with kappa validated over {0.5, 1, 2} * tr(S0)/T?"
+  },
+  "cells": {
+    "TQNet": ["ETTh1-96", "ETTh2-96", "ETTh2-720", "ETTm1-96", "ETTm2-96", "ETTm2-720", "Weather-720"],
+    "iTransformer": ["ECL-96"]
+  },
+  "seeds": "OPTION_FULL: 5 seeds for ETTh and iTransformer/ECL-96, 3 for ETTm/Weather (as before). OPTION_REDUCED: seeds 2021-2023 everywhere.",
+  "arms_per_seed": {
+    "SIGMA_I": "released command with --meta_lr 0 (as v1-v7)",
+    "QDF_LR<m>": "released QDF with meta_lr = m * released meta_lr; m in {1/8, 1/4, 1/2, 1, 2, 4, 8} for TQNet (7, same size as the TQNet a grid) and {1/4, 1/2, 1, 2, 4} for iTransformer (5); m = 1 is the released QDF",
+    "QDF_VAL": "lowest best validation MSE over QDF_LR<m>, ties to m = 1, then to the smaller m; test MSE never used",
+    "PLUGIN_A<a>": "Sigma = I + a*S0n, a grid {0.01,0.03,0.1,0.25,0.5,1,2} (TQNet) / {0.01,0.03,0.1,0.3,1} (iTransformer); rerun on the v8 platform",
+    "PLUGIN_VAL": "as v3-v7",
+    "PDIAG_A<a>": "Sigma = I + a*D0n with the same a grid (new mode plugin_diag_abs in fixed_sigma_patch.py)",
+    "PDIAG_VAL": "as PLUGIN_VAL over PDIAG_A<a>",
+    "REPLAY_K<k>": "Sigma = replay of the released meta-SGD (same meta_lr, steps, halving schedule, P0 = I, L = tril(P) + 1e-6 I) on the constant moment k * (tr S0/T) * S0n, k in {0.5, 1, 2} (new mode replay in fixed_sigma_patch.py, same code as paper/scripts/resim_meta.py)",
+    "REPLAY_VAL": "as PLUGIN_VAL over REPLAY_K<k>",
+    "REPLAY_K1": "the single-run, validation-free budget-implied surrogate"
+  },
+  "quantities": {
+    "g_X": "per seed (MSE_SIGMA_I - MSE_X)/MSE_SIGMA_I",
+    "R_X": "mean g_X / mean g_QDF_VAL (primary) and / mean g_QDF_LR1 (secondary)",
+    "D_diag": "per seed g_PDIAG_VAL - g_PLUGIN_VAL",
+    "nu": "SIGMA_I_REP at seed 2021 per cell"
+  },
+  "decision_rules": {
+    "n": 8, "k": 6, "min_pos": "4 of 5 seeds, or 3 of 3",
+    "Q8.1": {"SURROGATE_MATCHES_TUNED_QDF": "in >= k cells R_PLUGIN_VAL >= 0.8 and g_PLUGIN_VAL > 0 for >= min_pos seeds",
+             "TUNED_QDF_BETTER": "in >= k cells R_PLUGIN_VAL < 0.5",
+             "MIXED": "otherwise"},
+    "Q8.2": {"DIAG_BETTER": "in >= k cells mean D_diag > 0 and D_diag > 0 for >= min_pos seeds",
+             "DIAG_WORSE": "in >= k cells mean D_diag < 0 and D_diag < 0 for >= min_pos seeds",
+             "NO_DIFFERENCE": "otherwise"},
+    "Q8.3": {"REPLAY_RECOVERS": "in >= k cells R_REPLAY_K1 >= 0.8 and g_REPLAY_K1 > 0 for >= min_pos seeds (same rule reported for REPLAY_VAL)",
+             "REPLAY_FAILS": "in >= k cells R_REPLAY_K1 < 0.5",
+             "PARTIAL": "otherwise"},
+    "secondary": "Wilcoxon signed-rank over cells of mean(g_PLUGIN_VAL - g_QDF_VAL); per-cell t-intervals; selected m and a; QDF_LR1 and SIGMA_I against the v4/v5/v7 values of the same cell (cross-platform, descriptive)."
+  },
+  "extras_cpu_on_server": "replay of all saved T=720 learned Sigma (A.pth of v4/v5 QDF runs, if still on the server disk); learned Sigma of the DLinear QDF runs of v7, if A.pth is still on disk, otherwise one QDF run per DLinear cell with A.pth kept. Descriptive only.",
+  "estimated_cost": {
+    "OPTION_FULL": "about 770 runs (TQNet 25 per seed-cell, iTransformer 19), about 13-16 GPU hours with 8 TQNet jobs and 3 iTransformer jobs in parallel",
+    "OPTION_REDUCED": "about 580 runs, about 10-12 GPU hours"
+  },
+  "scope_chosen": "OPTION_FULL, chosen by the user on 2026-10-12",
+  "platform": "AutoDL Chongqing A / machine 704 (user copied all data from machine 703 on 2026-10-12), RTX 4080 SUPER 32 GB, CPU quota 12 cores, cgroup memory.high 70 GiB, torch 2.13.0+cu130, /root/miniconda3/bin/python, QDF eb0693a9. Data sha256 prefixes: ETTh1 aaf53becad03ad8a, ETTh2 ae5c99b925fb8b4e, ETTm1 f8a9f83e81643944, ETTm2 fa470b4ffeac8f96, weather 9b2b19b13e342d9c, electricity 7e45845d54c5219b. Every v8 number comes from this machine; v4/v5/v7 values of the same cells are compared descriptively only.",
+  "selection_and_failures": "A run with non-zero return code, missing or non-finite test MSE, or no finite validation MSE is ineligible for selection and is reported. If every grid run of a seed fails, that seed has no value for that arm. A failed SIGMA_I removes the seed from the cell. Each failed run is retried once (run_v8.sh, --retry_failed); the later record replaces the earlier one, and both stay in runs_v8.jsonl. Divergence of QDF at large meta learning rates is an expected outcome, not an engineering failure.",
+  "R_undefined": "if mean g_QDF_VAL <= 0 in a cell, R is undefined there and the cell counts as neither recovering nor failing for Q8.1 and Q8.3 except under the FAILS rules, where it counts as failing",
+  "code": "run_grid_v8.py, fixed_sigma_patch.py (new modes plugin_diag_abs and replay; _replay equals paper/scripts/resim_meta.simulate to 1.6e-16 on a random T=24 moment), summarize_v8.py -> results/summary_v8.json, remote/run_v8.sh (runs, one retry of failures, summary, pack, shutdown after a grace period). Runs appended to results/runs_v8.jsonl, work dirs runs_v8/.",
+  "integrity": "all runs (including failures) appended to results/runs_v8.jsonl; verdicts only from summarize_v8.py; anything else is labelled post hoc."
+}

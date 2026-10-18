@@ -1,0 +1,32 @@
+{
+  "protocol_id": "Q1A_V2_SIGMA_SUBSTITUTES",
+  "status": "post hoc: designed after seeing Q1A_V1 results (learned Sigma helps in 3 of 4 cells); frozen before any v2 formal run (one 1-epoch smoke test only)",
+  "frozen_at": "2026-10-10",
+  "question": "Can QDF's meta-learned Sigma be replaced by simpler fixed matrices without losing its gain? In particular, is Sigma ~ I + c*S0 (first-order plug-in from the initial model's residual second moment) sufficient, making the bilevel meta-learning unnecessary?",
+  "motivation_derivation": "With first_order=1 the meta objective mean||L^{-1}e||^2 depends on L only directly, has no log-det, and the base model is never updated in the meta phase. Its gradient at L=I is -2*tril(E[e e^T]), so early-stopped meta-learning from I moves Sigma along the initial-model residual second moment.",
+  "code": "Same as v1 (QDF eb0693a9, TQNet unchanged) plus fixed_sigma_patch.py, activated by Q1_SIGMA_MODE; cpu_launch.py imports it only when that variable is set.",
+  "shared_setup": "Each arm uses the v1 QDF arm's exact command except --meta_lr 0; the meta phase still runs, so init and batch order match v1 QDF and SIGMA_I for the same seed. After the meta phase, L := chol(Sigma_target).",
+  "learned_sigma_source": "runs/QDF_<ds>_<T>_<seed>/ck/*/A.pth from v1 (same seed)",
+  "grid": {"datasets": ["ETTh1", "ETTh2"], "pred_len": [96, 720], "seeds": [2021, 2022, 2023, 2024, 2025]},
+  "arms": {
+    "PLUGIN": "Sigma = I + c*S0; S0 = E[e e^T] of the initial model on the full training set (eval mode, sequential, RNG state saved/restored); c = (tr(S_learned) - T)/tr(S0). Uses one scalar from the learned Sigma (its trace), so it tests the shape, not a fully meta-learning-free procedure.",
+    "SCALAR": "Sigma = (tr(S_learned)/T) I",
+    "DIAG": "Sigma = diag(S_learned)",
+    "TOPK8": "Sigma = I + V8 (Lambda8 - 1) V8^T from the top 8 eigenpairs of S_learned"
+  },
+  "engineering_check": "REINJECT arm (Sigma = S_learned) for seed 2021 in each cell must reproduce the v1 QDF test MSE within 0.5% relative; otherwise the injection is considered broken and v2 conclusions are void.",
+  "reuse": "QDF and SIGMA_I results are taken from v1 runs.jsonl (same code path, same seeds); not rerun.",
+  "quantities": {
+    "g_X": "per seed (MSE_SIGMA_I - MSE_X)/MSE_SIGMA_I",
+    "R_X": "mean g_X / mean g_QDF, per cell"
+  },
+  "analysis_cells": "ETTh1-96, ETTh2-96, ETTh2-720 (cells with SIGMA_EFFECT in v1). ETTh1-720 is reported descriptively only, since v1 found no Sigma effect there.",
+  "decision_rules": {
+    "PLUGIN_SUFFICES": "R_PLUGIN >= 0.8 with g_PLUGIN > 0 for >= 4/5 seeds, in >= 2 of 3 analysis cells",
+    "PLUGIN_FAILS": "R_PLUGIN < 0.5 in >= 2 of 3 analysis cells; QDF's meta-learning then adds information beyond the first-order plug-in and the Q1 line stops",
+    "PARTIAL": "otherwise",
+    "secondary": "For SCALAR, DIAG, TOPK8 report R_X per cell with the same 0.8 / 0.5 bands; no overall verdict"
+  },
+  "next_if_PLUGIN_SUFFICES": "new protocol choosing c without the learned Sigma (validation grid), plus ECL/Weather on GPU",
+  "integrity": "all runs appended to results/runs_v2.jsonl; summary only from summarize_v2.py"
+}

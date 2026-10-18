@@ -1,0 +1,43 @@
+{
+  "protocol_id": "Q1A_QDF_SIGMA_ATTRIBUTION_v1",
+  "frozen_at": "2026-10-10, before any formal run (only 1-epoch smoke tests executed, results discarded from analysis)",
+  "question": "Under QDF's released ETTh1/ETTh2 TQNet configuration, how much of QDF's reported MSE reduction over the TQNet baseline is due to the learned horizon matrix Sigma, versus training configuration differences?",
+  "code": {
+    "QDF": {"repo": "https://github.com/Master-PLC/QDF", "commit": "eb0693a962928e229417fd80b401c37b0dac6a67", "commit_date": "2025-11-28", "note": "latest public commit; predates the ICLR 2026 camera-ready, so equivalence to the paper's code is not established"},
+    "TQNet": {"repo": "https://github.com/ACAT-SCUT/TQNet", "commit": "15e19cb23483ed52398566c4baa959168cfffa57"},
+    "launcher": "cpu_launch.py (stubs missing optional packages; counts runtime stub use; numpy Inf/NaN aliases; torch.load weights_only=False for self-written checkpoints). Upstream source files unmodified.",
+    "data": "ETTh1.csv / ETTh2.csv shipped in the QDF repo, copied into TQNet/dataset (sha256 prefixes AAF53BECAD03AD8A / AE5C99B925FB8B4E)"
+  },
+  "environment": "Windows, CPU only, torch 2.13.0+cpu, Python 3.12; OMP/MKL threads = 1 per run; num_workers = 0",
+  "grid": {"datasets": ["ETTh1", "ETTh2"], "pred_len": [96, 720], "seq_len": 96, "seeds": [2021, 2022, 2023, 2024, 2025]},
+  "arms": {
+    "QDF": "QDF scripts/ETTh{1,2}.sh settings for the given pred_len, task long_term_forecast_meta_ml3, fix_seed=seed",
+    "SIGMA_I": "identical to QDF except --meta_lr 0; meta phase still runs, so model init and batch order are identical; Sigma stays (I+1e-6)^2",
+    "TQNET_OFFICIAL": "official TQNet run.py with scripts/TQNet/etth{1,2}.sh settings (lr 0.001, batch 256, lradj type3, dropout 0.5, 30 epochs, patience 5), random_seed=seed"
+  },
+  "metrics": "test MSE and MAE on normalized scale over the full test set, as printed by each codebase; test window counts must match across codebases",
+  "reported_reference": {
+    "source": "QDF paper (ICLR 2026) Appendix Table 7, TQNet rows; official TQNet result.txt (seed 2024)",
+    "QDF_reported": {"ETTh1": {"96": 0.365, "720": 0.466}, "ETTh2": {"96": 0.286, "720": 0.419}},
+    "TQNet_in_QDF_table": {"ETTh1": {"96": 0.372, "720": 0.507}, "ETTh2": {"96": 0.293, "720": 0.430}},
+    "TQNet_official_result_txt": {"ETTh1": {"96": 0.3712, "720": 0.4874}, "ETTh2": {"96": 0.2945, "720": 0.4334}}
+  },
+  "quantities": {
+    "g_rep": "(TQNet_in_QDF_table - QDF_reported) / TQNet_in_QDF_table",
+    "g_sigma": "per seed (MSE_SIGMA_I - MSE_QDF) / MSE_SIGMA_I; paired",
+    "g_cfg": "per seed (MSE_TQNET_OFFICIAL - MSE_SIGMA_I) / MSE_TQNET_OFFICIAL; paired",
+    "sigma_stats": "from saved A.pth: ||Sigma - I||_F / sqrt(T), eigenvalue min/max, mean off-diagonal correlation"
+  },
+  "decision_rules_per_cell": {
+    "SIGMA_EFFECT": "mean g_sigma >= 0.5 * g_rep and g_sigma > 0 for at least 4 of 5 seeds",
+    "NO_SIGMA_EFFECT": "|mean g_sigma| < 0.25 * g_rep, or fewer than 4 of 5 seeds positive while mean g_sigma < 0.5 * g_rep",
+    "PARTIAL": "otherwise"
+  },
+  "decision_rules_overall": {
+    "CONTINUE_Q1_DIAGNOSTIC": "NO_SIGMA_EFFECT in >= 3 of 4 cells, including ETTh1-720",
+    "STOP_Q1_DIAGNOSTIC": "SIGMA_EFFECT in >= 2 cells including ETTh1-720; the learned Sigma then matters and Q1's premise fails",
+    "INCONCLUSIVE": "otherwise; report as is, no threshold changes"
+  },
+  "reproduction_check": "QDF arm mean within 3% of QDF_reported per cell; if not, flag REPRODUCTION_GAP and interpret g_sigma only as a statement about the released code",
+  "integrity": "all runs (including failures) appended to results/runs.jsonl; summary generated only by summarize.py; any later analysis is a new protocol version labelled post hoc"
+}

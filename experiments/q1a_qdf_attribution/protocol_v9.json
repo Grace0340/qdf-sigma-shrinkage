@@ -1,0 +1,35 @@
+{
+  "protocol_id": "q1a_v9_fresh_seed_replication",
+  "status": "FROZEN",
+  "frozen_at": "2026-10-13T23:40+08:00, after the engineering check and before any v9 seed was run",
+  "motivation": "Every protocol v1-v8 used seeds 2021-2025, the seeds whose QDF gains selected the eight analysis cells (stated as a limitation in main_draft_v5). v9 repeats the frozen v8 comparison on seeds never used before, so neither the cells nor any grid were chosen with these seeds.",
+  "engineering_check": "smoke_v9_fail_imports/: all 9 smoke jobs failed at import (optional packages of QDF's import chain missing in the new venv). Installed with torch, numpy, pandas and numba pinned: patool, sktime, robustica, torch_geometric, reformer_pytorch, ipython, PyWavelets, POT, torch-dct, torchmetrics. smoke_v9/ (the 9 one-epoch seed-2021 jobs of smoke_v8, 9 concurrent): 9/9 returncode 0, and all 9 test MSEs and best validation MSEs are bit-identical to smoke_v8 on machine 704; inject_max_abs_err <= 2.5e-6; PDIAG trace/T = 1 + a. Smoke results are excluded from all analyses.",
+  "questions": {
+    "Q9.0": "On fresh seeds, in how many of the eight analysis cells does released QDF (QDF_LR1) still pass the original analysis-cell rule (g_QDF_LR1 > 0 in 3/3 seeds and mean g_QDF_LR1 >= max(0.005, 3 nu))? Reported as a count; no cell is added or removed.",
+    "Q9.1": "Q8.1 on fresh seeds: does the validated surrogate I + a*S0n recover >= 80% of validated QDF's gain?",
+    "Q9.2": "Q8.2 on fresh seeds: does I + a*D0n beat I + a*S0n?",
+    "Q9.3": "Q8.3 on fresh seeds: does the replay recover the gain, (i) REPLAY_K1 with no validation, (ii) REPLAY_VAL?",
+    "XM": "Cross-machine check: do SIGMA_I and QDF_LR1 at seed 2021 in the eight cells reproduce the v8 test MSE of machine 704 on machine 697?"
+  },
+  "cells": {"TQNet": ["ETTh1-96", "ETTh2-96", "ETTh2-720", "ETTm1-96", "ETTm2-96", "ETTm2-720", "Weather-720"], "iTransformer": ["ECL-96"]},
+  "seeds": "2026, 2027, 2028 in every cell (never used in v1-v8). nu from SIGMA_I_REP at seed 2026.",
+  "arms_per_seed": "identical to protocol_v8 (arms_per_seed): SIGMA_I, QDF_LR<m> (TQNet m in {1/8,...,8}, iTransformer {1/4,...,4}), PLUGIN_A<a>, PDIAG_A<a> (same a grids), REPLAY_K<k> (k in {0.5, 1, 2}); QDF_VAL, PLUGIN_VAL, PDIAG_VAL, REPLAY_VAL selected by best validation MSE as in v8 (QDF ties to m = 1). Same commands, released hyperparameters and fixed_sigma_patch.py as v8.",
+  "runs": "TQNet 25 per seed-cell x 7 cells x 3 seeds = 525; iTransformer 19 x 3 = 57; SIGMA_I_REP 8; total 590. XM: 16 runs.",
+  "quantities": "as protocol_v8 (g_X, R_X relative to QDF_VAL primary and QDF_LR1 secondary, D_diag, nu).",
+  "decision_rules": {
+    "n": 8, "k": 6, "min_pos": "3 of 3 seeds",
+    "Q9.0": "report the count n9 and the list; Q9.1-Q9.3 are evaluated on all eight cells regardless of n9 (the cells were fixed before v9), and additionally reported descriptively on the n9 passing cells",
+    "Q9.1": {"SURROGATE_MATCHES_TUNED_QDF": "in >= k cells R_PLUGIN_VAL >= 0.8 and g_PLUGIN_VAL > 0 for 3/3 seeds", "TUNED_QDF_BETTER": "in >= k cells R_PLUGIN_VAL < 0.5 (or undefined)", "MIXED": "otherwise"},
+    "Q9.2": {"DIAG_BETTER": "in >= k cells mean D_diag > 0 and D_diag > 0 for 3/3 seeds", "DIAG_WORSE": "in >= k cells mean D_diag < 0 and D_diag < 0 for 3/3 seeds", "NO_DIFFERENCE": "otherwise"},
+    "Q9.3": {"REPLAY_RECOVERS": "in >= k cells R_REPLAY_K1 >= 0.8 and g_REPLAY_K1 > 0 for 3/3 seeds (same rule reported for REPLAY_VAL)", "REPLAY_FAILS": "in >= k cells R_REPLAY_K1 < 0.5 (or undefined)", "PARTIAL": "otherwise"},
+    "XM": "IDENTICAL if all 16 test MSEs equal the v8 values exactly; otherwise report max relative difference. v9 numbers are never mixed with v8 numbers within a cell in either case.",
+    "secondary": "Wilcoxon signed-rank over cells of mean(g_PLUGIN_VAL - g_QDF_VAL), mean(g_REPLAY_K1 - g_QDF_VAL), mean(g_PDIAG_VAL - g_QDF_VAL); per-cell t-intervals; selected m and a; per-cell comparison with v8 (descriptive)."
+  },
+  "use_in_paper": "Whatever the verdicts, v9 is reported: if they agree with v8, the seed-reuse limitation is replaced by the fresh-seed result; if not, the disagreement is reported and the claims are weakened accordingly. Table I and Fig. 1 stay on v8 unless the authors decide otherwise after seeing both.",
+  "platform": "AutoDL Chongqing A / machine 697 (user copied all data from machine 704 on 2026-10-13), RTX 4080 SUPER 32 GB, driver 580.105.08, CPU quota 16 cores (Xeon Platinum 8470Q), cgroup memory.high 78 GiB. Isolated venv /root/q1a_env built from /root/miniconda3 Python 3.12.3 with the v8 stack: torch 2.13.0+cu130, numpy 1.26.4, pandas 2.3.3, numba 0.67.0, cuDNN 9.20 (full list in results/pip_freeze_697.txt). QDF eb0693a9, TQNet 15e19cb2, data files as v8 (sha256 prefixes checked before launch). Every v9 number comes from this machine.",
+  "selection_and_failures": "as protocol_v8: failed runs are ineligible, retried once (--retry_failed), both records kept; a failed SIGMA_I removes the seed from the cell.",
+  "code": "run_grid_v9.py (imports run_grid_v8.py and changes only seeds, output paths and the platform record), summarize_v9.py (imports summarize_v8.py rules) -> results/summary_v9.json, remote/run_v9.sh (XM check, grid, one retry, summary, pack, shutdown after a grace period), remote/clean_events_v9.sh (deletes TensorBoard event files of finished runs). Runs appended to results/runs_v9.jsonl (work dirs runs_v9/) and results/runs_v9_xm.jsonl (runs_v9_xm/).",
+  "resources": "--jobs 12 --mem_budget 62 --gpu_budget 31 (v8 used 10 / 50 / 31 on 12 cores and 70 GiB).",
+  "estimated_cost": "about 606 runs, about 10-13 hours wall clock on this machine",
+  "integrity": "SHA-256 of this file, run_grid_v9.py, summarize_v9.py, run_grid_v8.py, summarize_v8.py and fixed_sigma_patch.py are logged at launch by remote/run_v9.sh; v8 files are unchanged (protocol_v8 2f951e7b203705e0, run_grid_v8 365d2fc9aa20968b, fixed_sigma_patch bcd7a610dc298e32)."
+}

@@ -1,0 +1,380 @@
+Args in experiment:
+[1mBasic Config[0m
+  Task Name:          long_term_forecast_meta_ml3Is Training:        1                   
+  Model ID:           ECL_96_96           Model:              iTransformer        
+
+[1mData Loader[0m
+  Data:               custom              Root Path:          /root/autodl-tmp/q1a/QDF/dataset/electricity/
+  Data Path:          electricity.csv     Features:           M                   
+  Target:             OT                  Freq:               h                   
+
+[1mSave[0m
+  Checkpoints:        /root/autodl-tmp/q1a/runs_v9/PLUGIN_A0.03_iTransformer_ECL_96_2028/ck
+  Results:            /root/autodl-tmp/q1a/runs_v9/PLUGIN_A0.03_iTransformer_ECL_96_2028/res
+  Test Results:       /root/autodl-tmp/q1a/runs_v9/PLUGIN_A0.03_iTransformer_ECL_96_2028/tr
+  Log Path:           /root/autodl-tmp/q1a/runs_v9/PLUGIN_A0.03_iTransformer_ECL_96_2028/log.txt
+  Output Predictions and GroundTruth:0                   
+  Output Visualizations:0                   
+
+[1mModel Parameters[0m
+  Top k:              5                   Num Kernels:        6                   
+  Enc In:             321                 Dec In:             321                 
+  C Out:              321                 d model:            512                 
+  n heads:            8                   e layers:           3                   
+  d layers:           1                   d FF:               512                 
+  Moving Avg:         25                  Factor:             1                   
+  Distil:             1                   Dropout:            0.1                 
+  Embed:              timeF               Activation:         gelu                
+  Output Attention:   0                   
+
+[1mRun Parameters[0m
+  Threads:            1                   
+  Num Workers:        0                   Itr:                1                   
+  Train Epochs:       10                  Batch Size:         16                  
+  Patience:           3                   Learning Rate:      0.0005              
+  Des:                iTransformer        Loss:               MSE                 
+  Lradj:              type1               Use Amp:            0                   
+
+[1mFreDF Setting[0m
+  Alpha:              0.0                 1 - Alpha:          1.0                 
+  Auxi Loss:          MSE                 Auxi Mode:          fft                 
+  Auxi Type:          complex             Module First:       1                   
+  Degree of Polynominal:2                   
+
+[1mGPU[0m
+  Use GPU:            1                   GPU:                0                   
+  Use Multi GPU:      0                   Devices:            0,1,2,3             
+
+[1mDe-stationary Projector Params[0m
+  P Hidden Dims:      128, 128            P Hidden Layers:    2                   
+
+Use GPU: cuda:0
+>>>>>>>start training : long_term_forecast_meta_ml3_ECL_96_96_iTransformer_custom_ftM_sl96_ll48_pl96_dm512_nh8_el3_dl1_df512_fc1_ebtimeF_dtTrue_ax0.0_rl1.0_axlMSE_mf1_iTransformer_0>>>>>>>>>>>>>>>>>>>>>>>>>>
+Head lines of raw dataframe:
+                  date     0     1      2  ...   317     318    319      OT
+0  2016-07-01 02:00:00  14.0  69.0  234.0  ...  38.0  1558.0  182.0  2162.0
+1  2016-07-01 03:00:00  18.0  92.0  312.0  ...  47.0  2177.0  253.0  2835.0
+2  2016-07-01 04:00:00  21.0  96.0  312.0  ...  43.0  2193.0  218.0  2764.0
+3  2016-07-01 05:00:00  20.0  92.0  312.0  ...  39.0  1315.0  195.0  2735.0
+4  2016-07-01 06:00:00  22.0  91.0  312.0  ...  40.0  1378.0  191.0  2721.0
+
+[5 rows x 322 columns]
+train 18221
+val 2537
+
+>>>>>>>Meta Training Phase
+
+Initial learning rates: 0.0
+	task: 1, total task: 3 | meta loss: 1.3443003
+	task: 2, total task: 3 | meta loss: 0.9014810
+	task: 3, total task: 3 | meta loss: 1.1887268
+Step: 100 cost time: 196.35s
+Step: 100 | Avg Meta Loss: 1.1448361
+	task: 1, total task: 3 | meta loss: 1.3079457
+	task: 2, total task: 3 | meta loss: 0.9180676
+	task: 3, total task: 3 | meta loss: 1.1833471
+Step: 200 cost time: 193.66s
+Step: 200 | Avg Meta Loss: 1.1364536
+	task: 1, total task: 3 | meta loss: 1.3384086
+	task: 2, total task: 3 | meta loss: 0.9149750
+	task: 3, total task: 3 | meta loss: 1.1770253
+Step: 300 cost time: 185.11s
+Step: 300 | Avg Meta Loss: 1.1434696
+Statistics of learned covariance matrix: [92m(mean: 0.0104, std: 0.1015, min: 0.0000, max: 1.0000)[0m
+Head lines of raw dataframe:
+                  date     0     1      2  ...   317     318    319      OT
+0  2016-07-01 02:00:00  14.0  69.0  234.0  ...  38.0  1558.0  182.0  2162.0
+1  2016-07-01 03:00:00  18.0  92.0  312.0  ...  47.0  2177.0  253.0  2835.0
+2  2016-07-01 04:00:00  21.0  96.0  312.0  ...  43.0  2193.0  218.0  2764.0
+3  2016-07-01 05:00:00  20.0  92.0  312.0  ...  39.0  1315.0  195.0  2735.0
+4  2016-07-01 06:00:00  22.0  91.0  312.0  ...  40.0  1378.0  191.0  2721.0
+
+[5 rows x 322 columns]
+train 18221
+fixed sigma injected: {"mode": "plugin_abs", "s0_seconds": 24.89, "S0_trace_over_T": 1.1654807286937323, "a": 0.03, "target_trace_over_T": 1.03, "target_eig_min": 1.0005995429784835, "target_eig_max": 2.074993058810778, "inject_max_abs_err": 2.0837061223133446e-06}
+
+>>>>>>>Meta Training Phase completed
+
+
+>>>>>>>Meta Test Phase
+
+Initial learning rates: 0.0005
+	Meta Test - iters: 100, epoch: 1 | loss: 0.1848794, mse loss: 0.2066152
+	speed: 0.0536s/iter; cost time: 5.3598s; left time: 604.6354s
+	Meta Test - iters: 200, epoch: 1 | loss: 0.1881835, mse loss: 0.2097858
+	speed: 0.0531s/iter; cost time: 5.3062s; left time: 593.2862s
+	Meta Test - iters: 300, epoch: 1 | loss: 0.2132638, mse loss: 0.2382304
+	speed: 0.0536s/iter; cost time: 5.3619s; left time: 594.1539s
+	Meta Test - iters: 400, epoch: 1 | loss: 0.1869106, mse loss: 0.2060189
+	speed: 0.0531s/iter; cost time: 5.3101s; left time: 583.0985s
+	Meta Test - iters: 500, epoch: 1 | loss: 0.1929182, mse loss: 0.2160013
+	speed: 0.0528s/iter; cost time: 5.2835s; left time: 574.8991s
+	Meta Test - iters: 600, epoch: 1 | loss: 0.1503904, mse loss: 0.1674769
+	speed: 0.0534s/iter; cost time: 5.3391s; left time: 575.6110s
+	Meta Test - iters: 700, epoch: 1 | loss: 0.1434688, mse loss: 0.1586941
+	speed: 0.0532s/iter; cost time: 5.3206s; left time: 568.2912s
+	Meta Test - iters: 800, epoch: 1 | loss: 0.1535433, mse loss: 0.1702399
+	speed: 0.0530s/iter; cost time: 5.2976s; left time: 560.5407s
+	Meta Test - iters: 900, epoch: 1 | loss: 0.1495741, mse loss: 0.1660837
+	speed: 0.0531s/iter; cost time: 5.3129s; left time: 556.8466s
+	Meta Test - iters: 1000, epoch: 1 | loss: 0.1550589, mse loss: 0.1700689
+	speed: 0.0532s/iter; cost time: 5.3163s; left time: 551.8865s
+	Meta Test - iters: 1100, epoch: 1 | loss: 0.1528070, mse loss: 0.1702686
+	speed: 0.0491s/iter; cost time: 4.9134s; left time: 505.1416s
+Epoch: 1 cost time: 59.94186329841614
+Validation cost time: 3.1705808639526367
+Epoch: 1 | Train Loss Cov: 0.1722888, MSE: 0.1913773 | Valid Loss Cov: 0.1317862, MSE: 0.1458518
+Validation loss decreased [92m(inf --> 0.145852)[0m. Saving model ...
+Updating learning rate from 0.0005 to 0.00025
+	Meta Test - iters: 100, epoch: 2 | loss: 0.1434172, mse loss: 0.1567988
+	speed: 0.1036s/iter; cost time: 10.3565s; left time: 1050.4564s
+	Meta Test - iters: 200, epoch: 2 | loss: 0.1481805, mse loss: 0.1630408
+	speed: 0.0531s/iter; cost time: 5.3146s; left time: 533.7408s
+	Meta Test - iters: 300, epoch: 2 | loss: 0.1614717, mse loss: 0.1811571
+	speed: 0.0527s/iter; cost time: 5.2740s; left time: 524.3926s
+	Meta Test - iters: 400, epoch: 2 | loss: 0.1511572, mse loss: 0.1676005
+	speed: 0.0540s/iter; cost time: 5.3951s; left time: 531.0353s
+	Meta Test - iters: 500, epoch: 2 | loss: 0.1319132, mse loss: 0.1448942
+	speed: 0.0535s/iter; cost time: 5.3502s; left time: 521.2684s
+	Meta Test - iters: 600, epoch: 2 | loss: 0.2062441, mse loss: 0.2287110
+	speed: 0.0536s/iter; cost time: 5.3601s; left time: 516.8792s
+	Meta Test - iters: 700, epoch: 2 | loss: 0.1273122, mse loss: 0.1403906
+	speed: 0.0531s/iter; cost time: 5.3112s; left time: 506.8487s
+	Meta Test - iters: 800, epoch: 2 | loss: 0.1376949, mse loss: 0.1523014
+	speed: 0.0530s/iter; cost time: 5.2985s; left time: 500.3396s
+	Meta Test - iters: 900, epoch: 2 | loss: 0.1410886, mse loss: 0.1562761
+	speed: 0.0534s/iter; cost time: 5.3384s; left time: 498.7705s
+	Meta Test - iters: 1000, epoch: 2 | loss: 0.1406920, mse loss: 0.1548415
+	speed: 0.0530s/iter; cost time: 5.2974s; left time: 489.6360s
+	Meta Test - iters: 1100, epoch: 2 | loss: 0.1394073, mse loss: 0.1533837
+	speed: 0.0493s/iter; cost time: 4.9341s; left time: 451.1274s
+Epoch: 2 cost time: 60.032941818237305
+Validation cost time: 3.186415910720825
+Epoch: 2 | Train Loss Cov: 0.1451709, MSE: 0.1608775 | Valid Loss Cov: 0.1238697, MSE: 0.1367292
+Validation loss decreased [92m(0.145852 --> 0.136729)[0m. Saving model ...
+Updating learning rate from 0.00025 to 0.000125
+	Meta Test - iters: 100, epoch: 3 | loss: 0.1175897, mse loss: 0.1303083
+	speed: 0.1044s/iter; cost time: 10.4446s; left time: 940.5362s
+	Meta Test - iters: 200, epoch: 3 | loss: 0.1437944, mse loss: 0.1603823
+	speed: 0.0530s/iter; cost time: 5.2994s; left time: 471.9112s
+	Meta Test - iters: 300, epoch: 3 | loss: 0.1708589, mse loss: 0.1892404
+	speed: 0.0533s/iter; cost time: 5.3256s; left time: 468.9216s
+	Meta Test - iters: 400, epoch: 3 | loss: 0.1301236, mse loss: 0.1438731
+	speed: 0.0529s/iter; cost time: 5.2865s; left time: 460.1873s
+	Meta Test - iters: 500, epoch: 3 | loss: 0.1262395, mse loss: 0.1398982
+	speed: 0.0533s/iter; cost time: 5.3344s; left time: 459.0220s
+	Meta Test - iters: 600, epoch: 3 | loss: 0.1297877, mse loss: 0.1443183
+	speed: 0.0536s/iter; cost time: 5.3570s; left time: 455.6139s
+	Meta Test - iters: 700, epoch: 3 | loss: 0.1279943, mse loss: 0.1418392
+	speed: 0.0533s/iter; cost time: 5.3333s; left time: 448.2637s
+	Meta Test - iters: 800, epoch: 3 | loss: 0.1245344, mse loss: 0.1383419
+	speed: 0.0526s/iter; cost time: 5.2632s; left time: 437.1104s
+	Meta Test - iters: 900, epoch: 3 | loss: 0.1320756, mse loss: 0.1453811
+	speed: 0.0531s/iter; cost time: 5.3069s; left time: 435.4335s
+	Meta Test - iters: 1000, epoch: 3 | loss: 0.1654281, mse loss: 0.1845623
+	speed: 0.0535s/iter; cost time: 5.3496s; left time: 433.5835s
+	Meta Test - iters: 1100, epoch: 3 | loss: 0.1520589, mse loss: 0.1674885
+	speed: 0.0489s/iter; cost time: 4.8870s; left time: 391.2017s
+Epoch: 3 cost time: 59.91932153701782
+Validation cost time: 3.2070512771606445
+Epoch: 3 | Train Loss Cov: 0.1381726, MSE: 0.1529883 | Valid Loss Cov: 0.1200125, MSE: 0.1324034
+Validation loss decreased [92m(0.136729 --> 0.132403)[0m. Saving model ...
+Updating learning rate from 0.000125 to 6.25e-05
+	Meta Test - iters: 100, epoch: 4 | loss: 0.1340504, mse loss: 0.1481550
+	speed: 0.1048s/iter; cost time: 10.4847s; left time: 824.8337s
+	Meta Test - iters: 200, epoch: 4 | loss: 0.1446572, mse loss: 0.1599563
+	speed: 0.0531s/iter; cost time: 5.3128s; left time: 412.6461s
+	Meta Test - iters: 300, epoch: 4 | loss: 0.1175644, mse loss: 0.1299399
+	speed: 0.0534s/iter; cost time: 5.3359s; left time: 409.1033s
+	Meta Test - iters: 400, epoch: 4 | loss: 0.1208779, mse loss: 0.1342368
+	speed: 0.0535s/iter; cost time: 5.3514s; left time: 404.9367s
+	Meta Test - iters: 500, epoch: 4 | loss: 0.1229854, mse loss: 0.1352378
+	speed: 0.0533s/iter; cost time: 5.3286s; left time: 397.8874s
+	Meta Test - iters: 600, epoch: 4 | loss: 0.1380583, mse loss: 0.1520528
+	speed: 0.0535s/iter; cost time: 5.3537s; left time: 394.4048s
+	Meta Test - iters: 700, epoch: 4 | loss: 0.1401980, mse loss: 0.1550766
+	speed: 0.0530s/iter; cost time: 5.2979s; left time: 384.9998s
+	Meta Test - iters: 800, epoch: 4 | loss: 0.1215307, mse loss: 0.1342497
+	speed: 0.0535s/iter; cost time: 5.3505s; left time: 383.4668s
+	Meta Test - iters: 900, epoch: 4 | loss: 0.1238040, mse loss: 0.1363299
+	speed: 0.0535s/iter; cost time: 5.3485s; left time: 377.9805s
+	Meta Test - iters: 1000, epoch: 4 | loss: 0.1356683, mse loss: 0.1502108
+	speed: 0.0530s/iter; cost time: 5.3023s; left time: 369.4126s
+	Meta Test - iters: 1100, epoch: 4 | loss: 0.1235915, mse loss: 0.1365178
+	speed: 0.0492s/iter; cost time: 4.9174s; left time: 337.6796s
+Epoch: 4 cost time: 60.08632254600525
+Validation cost time: 3.2664759159088135
+Epoch: 4 | Train Loss Cov: 0.1341609, MSE: 0.1484288 | Valid Loss Cov: 0.1187959, MSE: 0.1311241
+Validation loss decreased [92m(0.132403 --> 0.131124)[0m. Saving model ...
+Updating learning rate from 6.25e-05 to 3.125e-05
+	Meta Test - iters: 100, epoch: 5 | loss: 0.1420952, mse loss: 0.1562872
+	speed: 0.1059s/iter; cost time: 10.5940s; left time: 712.8708s
+	Meta Test - iters: 200, epoch: 5 | loss: 0.1220880, mse loss: 0.1349298
+	speed: 0.0535s/iter; cost time: 5.3464s; left time: 354.4157s
+	Meta Test - iters: 300, epoch: 5 | loss: 0.1334351, mse loss: 0.1492910
+	speed: 0.0533s/iter; cost time: 5.3311s; left time: 348.0696s
+	Meta Test - iters: 400, epoch: 5 | loss: 0.1291295, mse loss: 0.1419299
+	speed: 0.0538s/iter; cost time: 5.3797s; left time: 345.8595s
+	Meta Test - iters: 500, epoch: 5 | loss: 0.1167078, mse loss: 0.1292980
+	speed: 0.0536s/iter; cost time: 5.3552s; left time: 338.9279s
+	Meta Test - iters: 600, epoch: 5 | loss: 0.1506435, mse loss: 0.1659249
+	speed: 0.0538s/iter; cost time: 5.3768s; left time: 334.9203s
+	Meta Test - iters: 700, epoch: 5 | loss: 0.1239856, mse loss: 0.1371304
+	speed: 0.0537s/iter; cost time: 5.3745s; left time: 329.4002s
+	Meta Test - iters: 800, epoch: 5 | loss: 0.1373922, mse loss: 0.1510053
+	speed: 0.0545s/iter; cost time: 5.4476s; left time: 328.4360s
+	Meta Test - iters: 900, epoch: 5 | loss: 0.1304529, mse loss: 0.1448008
+	speed: 0.0534s/iter; cost time: 5.3385s; left time: 316.5176s
+	Meta Test - iters: 1000, epoch: 5 | loss: 0.1232803, mse loss: 0.1366999
+	speed: 0.0534s/iter; cost time: 5.3433s; left time: 311.4582s
+	Meta Test - iters: 1100, epoch: 5 | loss: 0.1335671, mse loss: 0.1475223
+	speed: 0.0476s/iter; cost time: 4.7611s; left time: 272.7609s
+Epoch: 5 cost time: 60.25906038284302
+Validation cost time: 3.336294174194336
+Epoch: 5 | Train Loss Cov: 0.1317671, MSE: 0.1456929 | Valid Loss Cov: 0.1178462, MSE: 0.1299559
+Validation loss decreased [92m(0.131124 --> 0.129956)[0m. Saving model ...
+Updating learning rate from 3.125e-05 to 1.5625e-05
+	Meta Test - iters: 100, epoch: 6 | loss: 0.1300943, mse loss: 0.1435670
+	speed: 0.1056s/iter; cost time: 10.5640s; left time: 590.6317s
+	Meta Test - iters: 200, epoch: 6 | loss: 0.1243056, mse loss: 0.1372102
+	speed: 0.0530s/iter; cost time: 5.3009s; left time: 291.0707s
+	Meta Test - iters: 300, epoch: 6 | loss: 0.1127777, mse loss: 0.1246132
+	speed: 0.0530s/iter; cost time: 5.3011s; left time: 285.7816s
+	Meta Test - iters: 400, epoch: 6 | loss: 0.1335578, mse loss: 0.1487509
+	speed: 0.0570s/iter; cost time: 5.7019s; left time: 301.6875s
+	Meta Test - iters: 500, epoch: 6 | loss: 0.1274579, mse loss: 0.1408540
+	speed: 0.0584s/iter; cost time: 5.8444s; left time: 303.3808s
+	Meta Test - iters: 600, epoch: 6 | loss: 0.1176793, mse loss: 0.1285708
+	speed: 0.0537s/iter; cost time: 5.3745s; left time: 273.6162s
+	Meta Test - iters: 700, epoch: 6 | loss: 0.1290169, mse loss: 0.1426711
+	speed: 0.0535s/iter; cost time: 5.3531s; left time: 267.1742s
+	Meta Test - iters: 800, epoch: 6 | loss: 0.1339016, mse loss: 0.1467323
+	speed: 0.0537s/iter; cost time: 5.3693s; left time: 262.6147s
+	Meta Test - iters: 900, epoch: 6 | loss: 0.1253068, mse loss: 0.1388971
+	speed: 0.0540s/iter; cost time: 5.3986s; left time: 258.6482s
+	Meta Test - iters: 1000, epoch: 6 | loss: 0.1269185, mse loss: 0.1396632
+	speed: 0.0530s/iter; cost time: 5.2952s; left time: 248.3974s
+	Meta Test - iters: 1100, epoch: 6 | loss: 0.1094028, mse loss: 0.1210386
+	speed: 0.0484s/iter; cost time: 4.8401s; left time: 222.2071s
+Epoch: 6 cost time: 60.922032594680786
+Validation cost time: 3.3639001846313477
+Epoch: 6 | Train Loss Cov: 0.1303991, MSE: 0.1441232 | Valid Loss Cov: 0.1176839, MSE: 0.1298268
+Validation loss decreased [92m(0.129956 --> 0.129827)[0m. Saving model ...
+Updating learning rate from 1.5625e-05 to 7.8125e-06
+	Meta Test - iters: 100, epoch: 7 | loss: 0.1281949, mse loss: 0.1415567
+	speed: 0.1062s/iter; cost time: 10.6178s; left time: 472.8100s
+	Meta Test - iters: 200, epoch: 7 | loss: 0.1287555, mse loss: 0.1421501
+	speed: 0.0537s/iter; cost time: 5.3677s; left time: 233.6564s
+	Meta Test - iters: 300, epoch: 7 | loss: 0.1304220, mse loss: 0.1452431
+	speed: 0.0536s/iter; cost time: 5.3629s; left time: 228.0842s
+	Meta Test - iters: 400, epoch: 7 | loss: 0.1483426, mse loss: 0.1636427
+	speed: 0.0536s/iter; cost time: 5.3574s; left time: 222.4928s
+	Meta Test - iters: 500, epoch: 7 | loss: 0.1404818, mse loss: 0.1555688
+	speed: 0.0536s/iter; cost time: 5.3589s; left time: 217.1944s
+	Meta Test - iters: 600, epoch: 7 | loss: 0.1280650, mse loss: 0.1427278
+	speed: 0.0540s/iter; cost time: 5.4002s; left time: 213.4698s
+	Meta Test - iters: 700, epoch: 7 | loss: 0.1177224, mse loss: 0.1303208
+	speed: 0.0533s/iter; cost time: 5.3280s; left time: 205.2867s
+	Meta Test - iters: 800, epoch: 7 | loss: 0.1408237, mse loss: 0.1554156
+	speed: 0.0536s/iter; cost time: 5.3596s; left time: 201.1474s
+	Meta Test - iters: 900, epoch: 7 | loss: 0.1066768, mse loss: 0.1175740
+	speed: 0.0539s/iter; cost time: 5.3910s; left time: 196.9327s
+	Meta Test - iters: 1000, epoch: 7 | loss: 0.1257925, mse loss: 0.1393449
+	speed: 0.0542s/iter; cost time: 5.4201s; left time: 192.5746s
+	Meta Test - iters: 1100, epoch: 7 | loss: 0.1283222, mse loss: 0.1406861
+	speed: 0.0484s/iter; cost time: 4.8397s; left time: 167.1159s
+Epoch: 7 cost time: 60.41298842430115
+Validation cost time: 3.4475629329681396
+Epoch: 7 | Train Loss Cov: 0.1296515, MSE: 0.1432684 | Valid Loss Cov: 0.1175798, MSE: 0.1296957
+Validation loss decreased [92m(0.129827 --> 0.129696)[0m. Saving model ...
+Updating learning rate from 7.8125e-06 to 3.90625e-06
+	Meta Test - iters: 100, epoch: 8 | loss: 0.1193201, mse loss: 0.1314879
+	speed: 0.1081s/iter; cost time: 10.8059s; left time: 358.2159s
+	Meta Test - iters: 200, epoch: 8 | loss: 0.1250797, mse loss: 0.1377957
+	speed: 0.0532s/iter; cost time: 5.3248s; left time: 171.1917s
+	Meta Test - iters: 300, epoch: 8 | loss: 0.1235094, mse loss: 0.1364423
+	speed: 0.0542s/iter; cost time: 5.4172s; left time: 168.7465s
+	Meta Test - iters: 400, epoch: 8 | loss: 0.1216298, mse loss: 0.1336392
+	speed: 0.0538s/iter; cost time: 5.3772s; left time: 162.1229s
+	Meta Test - iters: 500, epoch: 8 | loss: 0.1286276, mse loss: 0.1426965
+	speed: 0.0536s/iter; cost time: 5.3607s; left time: 156.2651s
+	Meta Test - iters: 600, epoch: 8 | loss: 0.1506376, mse loss: 0.1656198
+	speed: 0.0541s/iter; cost time: 5.4102s; left time: 152.2981s
+	Meta Test - iters: 700, epoch: 8 | loss: 0.1422439, mse loss: 0.1560250
+	speed: 0.0537s/iter; cost time: 5.3684s; left time: 145.7526s
+	Meta Test - iters: 800, epoch: 8 | loss: 0.1337115, mse loss: 0.1467671
+	speed: 0.0535s/iter; cost time: 5.3516s; left time: 139.9439s
+	Meta Test - iters: 900, epoch: 8 | loss: 0.1181035, mse loss: 0.1306290
+	speed: 0.0535s/iter; cost time: 5.3466s; left time: 134.4660s
+	Meta Test - iters: 1000, epoch: 8 | loss: 0.1336980, mse loss: 0.1481687
+	speed: 0.0537s/iter; cost time: 5.3668s; left time: 129.6078s
+	Meta Test - iters: 1100, epoch: 8 | loss: 0.1476182, mse loss: 0.1621063
+	speed: 0.0484s/iter; cost time: 4.8431s; left time: 112.1183s
+Epoch: 8 cost time: 60.48138904571533
+Validation cost time: 3.4109015464782715
+Epoch: 8 | Train Loss Cov: 0.1292238, MSE: 0.1427738 | Valid Loss Cov: 0.1173856, MSE: 0.1294699
+Validation loss decreased [92m(0.129696 --> 0.129470)[0m. Saving model ...
+Updating learning rate from 3.90625e-06 to 1.953125e-06
+	Meta Test - iters: 100, epoch: 9 | loss: 0.1376428, mse loss: 0.1513102
+	speed: 0.1080s/iter; cost time: 10.7996s; left time: 235.1064s
+	Meta Test - iters: 200, epoch: 9 | loss: 0.1369421, mse loss: 0.1513399
+	speed: 0.0532s/iter; cost time: 5.3177s; left time: 110.4486s
+	Meta Test - iters: 300, epoch: 9 | loss: 0.1222683, mse loss: 0.1343810
+	speed: 0.0533s/iter; cost time: 5.3347s; left time: 105.4679s
+	Meta Test - iters: 400, epoch: 9 | loss: 0.1159739, mse loss: 0.1275396
+	speed: 0.0536s/iter; cost time: 5.3621s; left time: 100.6473s
+	Meta Test - iters: 500, epoch: 9 | loss: 0.1338536, mse loss: 0.1476978
+	speed: 0.0535s/iter; cost time: 5.3498s; left time: 95.0652s
+	Meta Test - iters: 600, epoch: 9 | loss: 0.1315975, mse loss: 0.1459004
+	speed: 0.0535s/iter; cost time: 5.3533s; left time: 89.7747s
+	Meta Test - iters: 700, epoch: 9 | loss: 0.1353176, mse loss: 0.1493066
+	speed: 0.0537s/iter; cost time: 5.3745s; left time: 84.7563s
+	Meta Test - iters: 800, epoch: 9 | loss: 0.1501059, mse loss: 0.1672426
+	speed: 0.0538s/iter; cost time: 5.3804s; left time: 79.4689s
+	Meta Test - iters: 900, epoch: 9 | loss: 0.1141070, mse loss: 0.1253276
+	speed: 0.0536s/iter; cost time: 5.3574s; left time: 73.7712s
+	Meta Test - iters: 1000, epoch: 9 | loss: 0.1354040, mse loss: 0.1500929
+	speed: 0.0535s/iter; cost time: 5.3505s; left time: 68.3264s
+	Meta Test - iters: 1100, epoch: 9 | loss: 0.1545440, mse loss: 0.1706124
+	speed: 0.0490s/iter; cost time: 4.9050s; left time: 57.7318s
+Epoch: 9 cost time: 60.45292568206787
+Validation cost time: 3.409162998199463
+Epoch: 9 | Train Loss Cov: 0.1290177, MSE: 0.1425374 | Valid Loss Cov: 0.1175728, MSE: 0.1297022
+EarlyStopping counter: [91m1 out of 3[0m
+Updating learning rate from 1.953125e-06 to 9.765625e-07
+	Meta Test - iters: 100, epoch: 10 | loss: 0.1372561, mse loss: 0.1501318
+	speed: 0.1078s/iter; cost time: 10.7809s; left time: 112.0131s
+	Meta Test - iters: 200, epoch: 10 | loss: 0.1197977, mse loss: 0.1326102
+	speed: 0.0534s/iter; cost time: 5.3413s; left time: 50.1549s
+	Meta Test - iters: 300, epoch: 10 | loss: 0.1271100, mse loss: 0.1389505
+	speed: 0.0531s/iter; cost time: 5.3070s; left time: 44.5257s
+	Meta Test - iters: 400, epoch: 10 | loss: 0.1273417, mse loss: 0.1420201
+	speed: 0.0532s/iter; cost time: 5.3185s; left time: 39.3040s
+	Meta Test - iters: 500, epoch: 10 | loss: 0.1323912, mse loss: 0.1468032
+	speed: 0.0535s/iter; cost time: 5.3455s; left time: 34.1580s
+	Meta Test - iters: 600, epoch: 10 | loss: 0.1301524, mse loss: 0.1436776
+	speed: 0.0534s/iter; cost time: 5.3389s; left time: 28.7768s
+	Meta Test - iters: 700, epoch: 10 | loss: 0.1222187, mse loss: 0.1357157
+	speed: 0.0536s/iter; cost time: 5.3609s; left time: 23.5342s
+	Meta Test - iters: 800, epoch: 10 | loss: 0.1296953, mse loss: 0.1422936
+	speed: 0.0536s/iter; cost time: 5.3621s; left time: 18.1774s
+	Meta Test - iters: 900, epoch: 10 | loss: 0.1301141, mse loss: 0.1444258
+	speed: 0.0530s/iter; cost time: 5.3011s; left time: 12.6697s
+	Meta Test - iters: 1000, epoch: 10 | loss: 0.1329635, mse loss: 0.1475007
+	speed: 0.0538s/iter; cost time: 5.3757s; left time: 7.4722s
+	Meta Test - iters: 1100, epoch: 10 | loss: 0.1309754, mse loss: 0.1448289
+	speed: 0.0440s/iter; cost time: 4.4010s; left time: 1.7164s
+Epoch: 10 cost time: 58.90074610710144
+Validation cost time: 1.28204345703125
+Epoch: 10 | Train Loss Cov: 0.1289025, MSE: 0.1424025 | Valid Loss Cov: 0.1174674, MSE: 0.1295725
+EarlyStopping counter: [91m2 out of 3[0m
+Updating learning rate from 9.765625e-07 to 4.8828125e-07
+
+>>>>>>>Meta Test Phase completed
+
+>>>>>>>testing : long_term_forecast_meta_ml3_ECL_96_96_iTransformer_custom_ftM_sl96_ll48_pl96_dm512_nh8_el3_dl1_df512_fc1_ebtimeF_dtTrue_ax0.0_rl1.0_axlMSE_mf1_iTransformer_0<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+test 5165
+test shape: torch.Size([5165, 96, 321]) torch.Size([5165, 96, 321])
+test shape: torch.Size([5165, 96, 321]) torch.Size([5165, 96, 321])
+96	| mse:0.14960122108459473, mae:0.2414538562297821, cov:0.13499318063259125
+save configs

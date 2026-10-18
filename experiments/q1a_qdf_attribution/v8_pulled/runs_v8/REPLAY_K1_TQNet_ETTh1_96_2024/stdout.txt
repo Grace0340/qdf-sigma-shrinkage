@@ -1,0 +1,182 @@
+Args in experiment:
+[1mBasic Config[0m
+  Task Name:          long_term_forecast_meta_ml3Is Training:        1                   
+  Model ID:           ETTh1_96_96         Model:              TQNet               
+
+[1mData Loader[0m
+  Data:               ETTh1               Root Path:          /root/autodl-tmp/q1a/QDF/dataset/ETT-small/
+  Data Path:          ETTh1.csv           Features:           M                   
+  Target:             OT                  Freq:               h                   
+
+[1mSave[0m
+  Checkpoints:        /root/autodl-tmp/q1a/runs_v8/REPLAY_K1_TQNet_ETTh1_96_2024/ck
+  Results:            /root/autodl-tmp/q1a/runs_v8/REPLAY_K1_TQNet_ETTh1_96_2024/res
+  Test Results:       /root/autodl-tmp/q1a/runs_v8/REPLAY_K1_TQNet_ETTh1_96_2024/tr
+  Log Path:           /root/autodl-tmp/q1a/runs_v8/REPLAY_K1_TQNet_ETTh1_96_2024/log.txt
+  Output Predictions and GroundTruth:0                   
+  Output Visualizations:0                   
+
+[1mModel Parameters[0m
+  Top k:              5                   Num Kernels:        6                   
+  Enc In:             7                   Dec In:             7                   
+  C Out:              7                   d model:            512                 
+  n heads:            8                   e layers:           2                   
+  d layers:           1                   d FF:               2048                
+  Moving Avg:         25                  Factor:             3                   
+  Distil:             1                   Dropout:            0.5                 
+  Embed:              timeF               Activation:         gelu                
+  Output Attention:   0                   
+
+[1mRun Parameters[0m
+  Threads:            1                   
+  Num Workers:        0                   Itr:                1                   
+  Train Epochs:       30                  Batch Size:         32                  
+  Patience:           5                   Learning Rate:      0.005               
+  Des:                TQNet               Loss:               MSE                 
+  Lradj:              type1               Use Amp:            0                   
+
+[1mFreDF Setting[0m
+  Alpha:              0.0                 1 - Alpha:          1.0                 
+  Auxi Loss:          MSE                 Auxi Mode:          fft                 
+  Auxi Type:          complex             Module First:       1                   
+  Degree of Polynominal:2                   
+
+[1mGPU[0m
+  Use GPU:            1                   GPU:                0                   
+  Use Multi GPU:      0                   Devices:            0,1,2,3             
+
+[1mDe-stationary Projector Params[0m
+  P Hidden Dims:      128, 128            P Hidden Layers:    2                   
+
+Use GPU: cuda:0
+>>>>>>>start training : long_term_forecast_meta_ml3_ETTh1_96_96_TQNet_ETTh1_ftM_sl96_ll48_pl96_dm512_nh8_el2_dl1_df2048_fc3_ebtimeF_dtTrue_ax0.0_rl1.0_axlMSE_mf1_TQNet_0>>>>>>>>>>>>>>>>>>>>>>>>>>
+train 8449
+val 2785
+
+>>>>>>>Meta Training Phase
+
+Initial learning rates: 0.0
+	task: 1, total task: 3 | meta loss: 0.6342979
+	task: 2, total task: 3 | meta loss: 0.5221382
+	task: 3, total task: 3 | meta loss: 0.6986279
+Step: 100 cost time: 50.15s
+Step: 100 | Avg Meta Loss: 0.6183547
+	task: 1, total task: 3 | meta loss: 0.7122232
+	task: 2, total task: 3 | meta loss: 0.5901402
+	task: 3, total task: 3 | meta loss: 0.7134201
+Step: 200 cost time: 49.14s
+Step: 200 | Avg Meta Loss: 0.6719278
+	task: 1, total task: 3 | meta loss: 0.6238055
+	task: 2, total task: 3 | meta loss: 0.5979903
+	task: 3, total task: 3 | meta loss: 0.7174177
+Step: 300 cost time: 47.71s
+Step: 300 | Avg Meta Loss: 0.6464045
+Statistics of learned covariance matrix: [92m(mean: 0.0104, std: 0.1015, min: 0.0000, max: 1.0000)[0m
+train 8449
+fixed sigma injected: {"mode": "replay", "s0_seconds": 0.55, "S0_trace_over_T": 0.5963849917756416, "k": 1.0, "meta_lr": 0.2, "steps": 300, "replay_seconds": 0.23, "replay_device": "cuda", "replay_finite": true, "target_trace_over_T": 1.4608751014057901, "target_eig_min": 1.1932193235614297, "target_eig_max": 5.391027419617234, "inject_max_abs_err": 2.474469504409882e-06}
+
+>>>>>>>Meta Training Phase completed
+
+
+>>>>>>>Meta Test Phase
+
+Initial learning rates: 0.005
+	Meta Test - iters: 100, epoch: 1 | loss: 0.1732602, mse loss: 0.4223401
+	speed: 0.0274s/iter; cost time: 2.7361s; left time: 213.9880s
+	Meta Test - iters: 200, epoch: 1 | loss: 0.1483418, mse loss: 0.3391978
+	speed: 0.0259s/iter; cost time: 2.5894s; left time: 199.9289s
+Epoch: 1 cost time: 6.882597208023071
+Validation cost time: 1.1117544174194336
+Epoch: 1 | Train Loss Cov: 0.1615128, MSE: 0.3905964 | Valid Loss Cov: 0.2485193, MSE: 0.7402007
+Validation loss decreased [92m(inf --> 0.740201)[0m. Saving model ...
+Updating learning rate from 0.005 to 0.0025
+	Meta Test - iters: 100, epoch: 2 | loss: 0.1489494, mse loss: 0.3348585
+	speed: 0.0526s/iter; cost time: 5.2614s; left time: 397.6036s
+	Meta Test - iters: 200, epoch: 2 | loss: 0.1621075, mse loss: 0.4242171
+	speed: 0.0264s/iter; cost time: 2.6412s; left time: 196.9539s
+Epoch: 2 cost time: 6.915880441665649
+Validation cost time: 1.2571053504943848
+Epoch: 2 | Train Loss Cov: 0.1500518, MSE: 0.3647678 | Valid Loss Cov: 0.2333539, MSE: 0.6961181
+Validation loss decreased [92m(0.740201 --> 0.696118)[0m. Saving model ...
+Updating learning rate from 0.0025 to 0.00125
+	Meta Test - iters: 100, epoch: 3 | loss: 0.1411554, mse loss: 0.3285131
+	speed: 0.0561s/iter; cost time: 5.6107s; left time: 409.1910s
+	Meta Test - iters: 200, epoch: 3 | loss: 0.1600241, mse loss: 0.4047436
+	speed: 0.0255s/iter; cost time: 2.5527s; left time: 183.6133s
+Epoch: 3 cost time: 6.7512526512146
+Validation cost time: 1.2548837661743164
+Epoch: 3 | Train Loss Cov: 0.1447236, MSE: 0.3502129 | Valid Loss Cov: 0.2270025, MSE: 0.6751266
+Validation loss decreased [92m(0.696118 --> 0.675127)[0m. Saving model ...
+Updating learning rate from 0.00125 to 0.000625
+	Meta Test - iters: 100, epoch: 4 | loss: 0.1283705, mse loss: 0.3007956
+	speed: 0.0525s/iter; cost time: 5.2542s; left time: 369.3161s
+	Meta Test - iters: 200, epoch: 4 | loss: 0.1525984, mse loss: 0.3854306
+	speed: 0.0241s/iter; cost time: 2.4073s; left time: 166.8026s
+Epoch: 4 cost time: 6.361070156097412
+Validation cost time: 1.2388463020324707
+Epoch: 4 | Train Loss Cov: 0.1410808, MSE: 0.3395805 | Valid Loss Cov: 0.2245720, MSE: 0.6692732
+Validation loss decreased [92m(0.675127 --> 0.669273)[0m. Saving model ...
+Updating learning rate from 0.000625 to 0.0003125
+	Meta Test - iters: 100, epoch: 5 | loss: 0.1574158, mse loss: 0.3947217
+	speed: 0.0518s/iter; cost time: 5.1783s; left time: 350.3112s
+	Meta Test - iters: 200, epoch: 5 | loss: 0.1281674, mse loss: 0.2922252
+	speed: 0.0240s/iter; cost time: 2.4004s; left time: 159.9898s
+Epoch: 5 cost time: 6.385449171066284
+Validation cost time: 1.2807834148406982
+Epoch: 5 | Train Loss Cov: 0.1386419, MSE: 0.3323971 | Valid Loss Cov: 0.2225506, MSE: 0.6595264
+Validation loss decreased [92m(0.669273 --> 0.659526)[0m. Saving model ...
+Updating learning rate from 0.0003125 to 0.00015625
+	Meta Test - iters: 100, epoch: 6 | loss: 0.1362693, mse loss: 0.3304760
+	speed: 0.0535s/iter; cost time: 5.3545s; left time: 348.0965s
+	Meta Test - iters: 200, epoch: 6 | loss: 0.1461464, mse loss: 0.3679779
+	speed: 0.0248s/iter; cost time: 2.4757s; left time: 158.4667s
+Epoch: 6 cost time: 6.54560923576355
+Validation cost time: 1.2809209823608398
+Epoch: 6 | Train Loss Cov: 0.1370477, MSE: 0.3272768 | Valid Loss Cov: 0.2226316, MSE: 0.6613392
+EarlyStopping counter: [91m1 out of 5[0m
+Updating learning rate from 0.00015625 to 7.8125e-05
+	Meta Test - iters: 100, epoch: 7 | loss: 0.1403871, mse loss: 0.3657650
+	speed: 0.0535s/iter; cost time: 5.3542s; left time: 333.9394s
+	Meta Test - iters: 200, epoch: 7 | loss: 0.1381542, mse loss: 0.3211643
+	speed: 0.0248s/iter; cost time: 2.4785s; left time: 152.1031s
+Epoch: 7 cost time: 6.535342454910278
+Validation cost time: 1.2709097862243652
+Epoch: 7 | Train Loss Cov: 0.1362774, MSE: 0.3250704 | Valid Loss Cov: 0.2230439, MSE: 0.6632671
+EarlyStopping counter: [91m2 out of 5[0m
+Updating learning rate from 7.8125e-05 to 3.90625e-05
+	Meta Test - iters: 100, epoch: 8 | loss: 0.1354322, mse loss: 0.3100949
+	speed: 0.0535s/iter; cost time: 5.3454s; left time: 319.2789s
+	Meta Test - iters: 200, epoch: 8 | loss: 0.1171528, mse loss: 0.2737325
+	speed: 0.0233s/iter; cost time: 2.3263s; left time: 136.6230s
+Epoch: 8 cost time: 6.351893901824951
+Validation cost time: 1.2770576477050781
+Epoch: 8 | Train Loss Cov: 0.1357472, MSE: 0.3233912 | Valid Loss Cov: 0.2228462, MSE: 0.6628887
+EarlyStopping counter: [91m3 out of 5[0m
+Updating learning rate from 3.90625e-05 to 1.953125e-05
+	Meta Test - iters: 100, epoch: 9 | loss: 0.1404748, mse loss: 0.3468877
+	speed: 0.0543s/iter; cost time: 5.4323s; left time: 310.1300s
+	Meta Test - iters: 200, epoch: 9 | loss: 0.1247258, mse loss: 0.2892892
+	speed: 0.0262s/iter; cost time: 2.6162s; left time: 146.7449s
+Epoch: 9 cost time: 6.8536577224731445
+Validation cost time: 1.1337034702301025
+Epoch: 9 | Train Loss Cov: 0.1354897, MSE: 0.3227285 | Valid Loss Cov: 0.2230057, MSE: 0.6636865
+EarlyStopping counter: [91m4 out of 5[0m
+Updating learning rate from 1.953125e-05 to 9.765625e-06
+	Meta Test - iters: 100, epoch: 10 | loss: 0.1381883, mse loss: 0.3375386
+	speed: 0.0523s/iter; cost time: 5.2256s; left time: 284.5333s
+	Meta Test - iters: 200, epoch: 10 | loss: 0.1220475, mse loss: 0.2826869
+	speed: 0.0248s/iter; cost time: 2.4832s; left time: 132.7256s
+Epoch: 10 cost time: 6.518336772918701
+Validation cost time: 1.2784221172332764
+Epoch: 10 | Train Loss Cov: 0.1355005, MSE: 0.3227907 | Valid Loss Cov: 0.2230615, MSE: 0.6638194
+EarlyStopping counter: [91m5 out of 5[0m
+Meta Test Early stopping
+
+>>>>>>>Meta Test Phase completed
+
+>>>>>>>testing : long_term_forecast_meta_ml3_ETTh1_96_96_TQNet_ETTh1_ftM_sl96_ll48_pl96_dm512_nh8_el2_dl1_df2048_fc3_ebtimeF_dtTrue_ax0.0_rl1.0_axlMSE_mf1_TQNet_0<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+test 2785
+test shape: torch.Size([2785, 96, 7]) torch.Size([2785, 96, 7])
+test shape: torch.Size([2785, 96, 7]) torch.Size([2785, 96, 7])
+96	| mse:0.3705320358276367, mae:0.3903864324092865, cov:0.16341769695281982
+save configs

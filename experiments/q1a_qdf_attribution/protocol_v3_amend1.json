@@ -1,0 +1,14 @@
+{
+  "protocol_id": "Q1A_V3_AMEND1_PLATFORM",
+  "amends": "Q1A_V3_META_FREE_SHRINKAGE (protocol_v3.json); arms, a_grid, quantities and decision rules are unchanged",
+  "status": "post hoc engineering amendment, frozen 2026-10-10 before any formal AutoDL run. Reason: the user asked to stop running CPU experiments on the local laptop (overheating). The local v3 grid was stopped at 88/160 successful runs: all 80 T=720 runs plus all 8 arms of ETTh1-96 seed 2021. Runs that were in flight when stopped were killed and never recorded. Only 1-epoch smoke tests (smoke_remote/, excluded) were run on AutoDL before freezing. The 8 local ETTh1-96 seed-2021 results exist in runs_v3.jsonl and were printed in the runner log (grid_v3_log.txt); they were not summarized or compared against any baseline before this amendment was frozen.",
+  "platform": {
+    "local": "user's Windows laptop, Python 3.12 venv, 14 single-thread jobs in parallel (all v1/v2 runs, v3 T=720 runs)",
+    "autodl": "AutoDL container (Chongqing A / machine 703), Linux, /root/miniconda3 Python 3.12.3, torch 2.13.0 (CUDA build, run on CPU only, CUDA_VISIBLE_DEVICES empty), numpy 1.26.4, pandas 2.3.3, numba 0.67.0; same QDF eb0693a9 tree, data sha256 prefixes AAF53BECAD03AD8A (ETTh1) / AE5C99B925FB8B4E (ETTh2) verified identical"
+  },
+  "change": "All T=96 runs used in the analysis are produced on AutoDL so that every quantity in a T=96 cell (SIGMA_I, QDF, the 7 PLUGIN_A<a> arms and FGLS_FULL) comes from one platform: for ETTh1 and ETTh2, T=96, seeds 2021-2025, arms QDF and SIGMA_I (v1 commands, unchanged) and the 8 v3 arms. 100 runs, written to results/runs_v3_autodl.jsonl, work dirs in runs_autodl/. Runner: run_grid_v3_autodl.py (calls the unchanged run_grid.run_one / run_grid_v3.run_one).",
+  "analysis": "Primary: summarize_v3.py --amend1 writes results/summary_v3_amend1.json. T=96 cells use only AutoDL records (runs_v3_autodl.jsonl); T=720 cells use only local records (v1 runs.jsonl for QDF/SIGMA_I, runs_v3.jsonl for v3 arms), exactly as protocol_v3. Decision rules as in protocol_v3.",
+  "retained_not_used_for_verdict": "Local v1 QDF/SIGMA_I T=96 runs and the 8 local v3 ETTh1-96 seed-2021 runs are kept unchanged. Reported descriptively as a cross-platform check: per-run |MSE_autodl - MSE_local| / MSE_local for the 10 local T=96 v1 runs per dataset and the 8 local v3 runs, and whether g_QDF per cell changes band or sign.",
+  "parallelism": "14 single-thread jobs in parallel on AutoDL (same as local) once the instance has >= 16 vCPUs; wall times are comparable within a platform only, so cost numbers are reported per platform.",
+  "integrity": "all AutoDL runs (including failures) appended to results/runs_v3_autodl.jsonl; failed runs are rerun only via the resumable runner; runs_v3.jsonl is not modified"
+}
